@@ -35,7 +35,7 @@ $recent_apps = getClientApplications($user_id);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Dashboard - Barangay e-Services</title>
+    <title>Resident Dashboard - Barangay e-Services</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body>
@@ -131,22 +131,14 @@ $recent_apps = getClientApplications($user_id);
                             $count = 0;
                             foreach ($recent_apps as $app): 
                                 if ($count >= 5) break; // Show only 5 recent
-                                $status_badge = 'badge-warning';
-                                if ($app['Status'] === 'Approved' || $app['Status'] === 'Completed') {
-                                    $status_badge = 'badge-success';
-                                } elseif ($app['Status'] === 'Rejected') {
-                                    $status_badge = 'badge-danger';
-                                } elseif ($app['Status'] === 'In Progress') {
-                                    $status_badge = 'badge-info';
-                                }
                                 $count++;
                             ?>
                             <tr>
-                                <td>#APP-<?php echo str_pad($app['ApplicationID'], 3, '0', STR_PAD_LEFT); ?></td>
-                                <td><?php echo htmlspecialchars($app['ServiceType']); ?></td>
-                                <td><?php echo date('Y-m-d', strtotime($app['CreatedAt'])); ?></td>
-                                <td><span class="badge <?php echo $status_badge; ?>"><?php echo htmlspecialchars($app['Status']); ?></span></td>
-                                <td><a href="view-application.php?id=<?php echo $app['ApplicationID']; ?>" class="btn btn-xs btn-info">View</a></td>
+                                <td><?php echo htmlspecialchars(isset($app['id']) ? $app['id'] : '#APP-0'); ?></td>
+                                <td><?php echo htmlspecialchars(isset($app['service']) ? $app['service'] : 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars(isset($app['date']) ? $app['date'] : 'N/A'); ?></td>
+                                <td><span class="badge <?php echo isset($app['status_class']) ? $app['status_class'] : 'badge-secondary'; ?>"><?php echo htmlspecialchars(isset($app['status']) ? $app['status'] : 'Pending'); ?></span></td>
+                                <td><a href="view-application.php?id=<?php echo isset($app['application_id']) ? urlencode($app['application_id']) : '#'; ?>" class="btn btn-xs btn-info">View</a></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>

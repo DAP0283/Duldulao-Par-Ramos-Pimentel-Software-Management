@@ -4,6 +4,10 @@
  */
 session_start();
 
+// Include database functions
+require_once('../../includes/db_config.php');
+require_once('../../includes/auth_functions.php');
+
 // Validate client session
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'client') {
     header('Location: ../../auth/client-login.php');
@@ -30,8 +34,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($full_name) || empty($birth_date) || empty($gender) || empty($address)) {
         $error_message = 'Please fill in all required fields';
     } else {
-        // TODO: Save to database
-        $success_message = 'Application submitted successfully! You will receive updates via email.';
+        // Save to database
+        $form_data = array(
+            'full_name' => $full_name,
+            'birth_date' => $birth_date,
+            'gender' => $gender,
+            'address' => $address,
+            'contact_number' => $contact_number,
+            'civil_status' => $civil_status,
+            'occupation' => $occupation
+        );
+        
+        $result = createApplication($_SESSION['user_id'], 'Barangay ID', $form_data);
+        
+        if ($result['success']) {
+            $success_message = 'Application submitted successfully! Your Application ID is: ' . $result['application_id'] . '. You will receive updates via email.';
+        } else {
+            $error_message = 'Error submitting application: ' . $result['message'];
+        }
     }
 }
 ?>

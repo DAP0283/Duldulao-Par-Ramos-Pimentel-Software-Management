@@ -26,6 +26,31 @@ require_once('../../../includes/auth_functions.php');
 $staff_id = $_SESSION['user_id'];
 $staff_name = $_SESSION['name'];
 
+// Handle AJAX requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'update_role') {
+        $target_staff_id = $_POST['staff_id'] ?? 0;
+        $new_role = $_POST['new_role'] ?? '';
+        $notes = $_POST['notes'] ?? '';
+        
+        if ($target_staff_id && $new_role) {
+            $result = updateStaffRole($target_staff_id, $new_role, $staff_id, $notes);
+            
+            header('Content-Type: application/json');
+            echo json_encode(array(
+                'success' => $result['success'],
+                'message' => $result['message'] ?? '',
+                'error' => $result['error'] ?? ''
+            ));
+            exit();
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(array('success' => false, 'error' => 'Missing required fields'));
+            exit();
+        }
+    }
+}
+
 // Get all staff members
 $staff_query = "SELECT StaffID, FirstName, LastName, Email, Position, Role, Department, IsActive, CreatedAt FROM Staff ORDER BY FirstName, LastName";
 $staff_result = sqlsrv_query($conn, $staff_query);
@@ -446,7 +471,41 @@ $available_departments = array(
 
         function handleChangeRole(event) {
             event.preventDefault();
-            alert('Role change feature coming soon!');
+            
+            const staffId = document.getElementById('role_staff_id').value;
+            const newRole = document.getElementById('new_role').value;
+            const notes = document.getElementById('role_notes').value;
+            
+            if (!newRole) {
+                alert('Please select a new role');
+                return;
+            }
+            
+            // AJAX request to update role
+            const formData = new FormData();
+            formData.append('action', 'update_role');
+            formData.append('staff_id', staffId);
+            formData.append('new_role', newRole);
+            formData.append('notes', notes);
+            
+            fetch('staff-management.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Staff role updated successfully!');
+                    closeRoleModal();
+                    location.reload();
+                } else {
+                    alert('Error updating role: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the role');
+            });
         }
 
         document.addEventListener('click', function(event) {

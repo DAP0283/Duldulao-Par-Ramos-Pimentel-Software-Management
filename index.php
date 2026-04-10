@@ -148,7 +148,7 @@ if (isset($_SESSION['user_id'])) {
             <h1>Brgy. Cogunan e-Services</h1>
             <p>Apply for essential barangay services online, anytime, anywhere</p>
             <div class="nav-buttons">
-                <a href="auth/client-login.php" class="btn btn-primary">Client Login</a>
+                <a href="auth/client-login.php" class="btn btn-primary">Resident Login</a>
                 <a href="auth/staff-login.php" class="btn btn-secondary">Staff Login</a>
                 <a href="auth/admin-login.php" class="btn btn-secondary">Admin Login</a>
             </div>

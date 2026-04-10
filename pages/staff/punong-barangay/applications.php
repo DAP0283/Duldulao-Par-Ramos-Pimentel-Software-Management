@@ -20,6 +20,59 @@ require_once('../../../includes/auth_functions.php');
 
 $staff_name = $_SESSION['name'];
 $status_filter = $_GET['status'] ?? '';
+
+// Fetch applications from database
+$applications = array();
+$query = "SELECT a.ApplicationID, a.ClientID, a.ServiceType, a.Status, a.CreatedAt, c.FirstName, c.LastName
+          FROM Applications a
+          LEFT JOIN Clients c ON a.ClientID = c.ClientID";
+
+if ($status_filter && $status_filter !== '') {
+    // Map lowercase status to database values
+    $status_map = array(
+        'pending' => 'Pending',
+        'in-progress' => 'Processing',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected'
+    );
+    
+    $db_status = $status_map[$status_filter] ?? 'Pending';
+    $query .= " WHERE a.Status = ?";
+    $params = array($db_status);
+    $stmt = sqlsrv_query($conn, $query, $params);
+} else {
+    $stmt = sqlsrv_query($conn, $query);
+}
+
+if ($stmt !== false) {
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        // Format date
+        $created = $row['CreatedAt'];
+        if ($created instanceof DateTime) {
+            $date_formatted = $created->format('Y-m-d');
+        } else {
+            $date_formatted = date('Y-m-d', strtotime($created));
+        }
+        
+        // Get status badge class
+        $status = $row['Status'];
+        $status_class = 'badge-secondary';
+        if ($status === 'Pending') $status_class = 'badge-warning';
+        elseif ($status === 'Processing') $status_class = 'badge-info';
+        elseif ($status === 'Approved') $status_class = 'badge-success';
+        elseif ($status === 'Rejected') $status_class = 'badge-danger';
+        
+        $applications[] = array(
+            'id' => '#APP-' . str_pad($row['ApplicationID'], 5, '0', STR_PAD_LEFT),
+            'application_id' => $row['ApplicationID'],
+            'applicant' => ($row['FirstName'] ?? 'Unknown') . ' ' . ($row['LastName'] ?? ''),
+            'service' => $row['ServiceType'],
+            'date' => $date_formatted,
+            'status' => $status,
+            'status_class' => $status_class
+        );
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -59,7 +112,7 @@ $status_filter = $_GET['status'] ?? '';
 
             <div class="dashboard-content">
                 <div class="admin-controls">
-                    <select id="filter-status" class="form-control">
+                    <select id="filter-status" class="form-control" onchange="filterApplications(this.value)">
                         <option value="">All Applications</option>
                         <option value="pending" <?php echo $status_filter === 'pending' ? 'selected' : ''; ?>>Pending Review</option>
                         <option value="in-progress" <?php echo $status_filter === 'in-progress' ? 'selected' : ''; ?>>In Progress</option>
@@ -83,14 +136,20 @@ $status_filter = $_GET['status'] ?? '';
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>#APP-001</td>
-                                <td>Juan dela Cruz</td>
-                                <td>Barangay Clearance</td>
-                                <td>2026-03-05</td>
-                                <td><span class="badge badge-warning">Pending</span></td>
-                                <td><a href="#" class="btn btn-xs btn-info">Review</a></td>
-                            </tr>
+                            <?php if (count($applications) > 0): ?>
+                                <?php foreach ($applications as $app): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($app['id']); ?></td>
+                                    <td><?php echo htmlspecialchars($app['applicant']); ?></td>
+                                    <td><?php echo htmlspecialchars($app['service']); ?></td>
+                                    <td><?php echo htmlspecialchars($app['date']); ?></td>
+                                    <td><span class="badge <?php echo $app['status_class']; ?>"><?php echo htmlspecialchars($app['status']); ?></span></td>
+                                    <td><a href="process-application.php?id=<?php echo urlencode($app['application_id']); ?>" class="btn btn-xs btn-info">Review</a></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="6">No applications found</td></tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </section>
@@ -99,5 +158,14 @@ $status_filter = $_GET['status'] ?? '';
     </div>
 
     <script src="../../../assets/js/main.js"></script>
+    <script>
+        function filterApplications(status) {
+            if (status === '') {
+                window.location.href = 'applications.php';
+            } else {
+                window.location.href = 'applications.php?status=' + encodeURIComponent(status);
+            }
+        }
+    </script>
 </body>
 </html>

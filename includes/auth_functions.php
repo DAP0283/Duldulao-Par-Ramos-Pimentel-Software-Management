@@ -253,19 +253,31 @@ function createApplication($clientId, $serviceType, $applicationData = null) {
         $stmt = sqlsrv_query($conn, $tsql, $params);
         
         if ($stmt === false) {
-            return ['success' => false, 'message' => 'Database error: ' . print_r(sqlsrv_errors(), true)];
+            $errors = sqlsrv_errors();
+            return ['success' => false, 'message' => 'Database error: ' . $errors[0]['message']];
         }
         
-        $result = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-        
-        if ($result['Result'] === 'Success') {
-            return [
-                'success' => true,
-                'message' => 'Application submitted successfully',
-                'application_id' => $result['ApplicationID']
-            ];
+        // Check if there are rows in the result set
+        if (sqlsrv_has_rows($stmt)) {
+            $result = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            
+            if ($result === false) {
+                $errors = sqlsrv_errors();
+                return ['success' => false, 'message' => 'Database error: ' . $errors[0]['message']];
+            }
+            
+            if ($result['Result'] === 'Success') {
+                return [
+                    'success' => true,
+                    'message' => 'Application submitted successfully',
+                    'application_id' => $result['ApplicationID'] ?? null
+                ];
+            } else {
+                return ['success' => false, 'message' => $result['Message'] ?? 'Application submission failed'];
+            }
         } else {
-            return ['success' => false, 'message' => $result['Message']];
+            // No rows returned, assume success if no error
+            return ['success' => true, 'message' => 'Application submitted successfully', 'application_id' => null];
         }
     } catch(Exception $e) {
         return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
@@ -289,7 +301,34 @@ function getClientApplications($clientId) {
         
         $results = array();
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-            $results[] = $row;
+            // Get status badge class
+            $status = $row['Status'] ?? 'Pending';
+            $status_class = 'badge-secondary';
+            if ($status === 'Pending') $status_class = 'badge-warning';
+            elseif ($status === 'Processing' || $status === 'In Progress') $status_class = 'badge-info';
+            elseif ($status === 'Approved' || $status === 'Completed') $status_class = 'badge-success';
+            elseif ($status === 'Rejected' || $status === 'Cancelled') $status_class = 'badge-danger';
+            
+            // Format date
+            $created_at = $row['CreatedAt'];
+            if ($created_at instanceof DateTime) {
+                $date_formatted = $created_at->format('Y-m-d');
+            } else {
+                $date_formatted = date('Y-m-d', strtotime($created_at));
+            }
+            
+            // Format application ID with prefix
+            $app_id = '#APP-' . str_pad($row['ApplicationID'], 5, '0', STR_PAD_LEFT);
+            
+            $results[] = array(
+                'id' => $app_id,
+                'application_id' => $row['ApplicationID'],
+                'service' => $row['ServiceType'],
+                'date' => $date_formatted,
+                'status' => $status,
+                'status_class' => $status_class,
+                'notes' => $row['ProcessingNotes'] ?? ''
+            );
         }
         return $results;
     } catch(Exception $e) {

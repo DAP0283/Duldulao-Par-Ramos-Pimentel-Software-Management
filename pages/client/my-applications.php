@@ -5,6 +5,10 @@
  */
 session_start();
 
+// Include database functions
+require_once('../../includes/db_config.php');
+require_once('../../includes/auth_functions.php');
+
 // Validate client session
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'client') {
     header('Location: ../../auth/client-login.php');
@@ -14,12 +18,13 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'client') {
 // Get user information from session
 $user_name = $_SESSION['name'];
 
-// Mock data - will be replaced with database query
-$applications = [
-    ['id' => '#APP-001', 'service' => 'Barangay Clearance', 'date' => '2026-03-05', 'status' => 'Approved', 'status_class' => 'badge-success'],
-    ['id' => '#APP-002', 'service' => 'Barangay ID', 'date' => '2026-03-04', 'status' => 'Pending', 'status_class' => 'badge-warning'],
-    ['id' => '#APP-003', 'service' => 'Burial Assistance', 'date' => '2026-03-01', 'status' => 'In Progress', 'status_class' => 'badge-info'],
-];
+// Get real applications from database
+$applications = getClientApplications($_SESSION['user_id']);
+
+// If no applications, show empty message
+if (empty($applications)) {
+    $applications = array();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

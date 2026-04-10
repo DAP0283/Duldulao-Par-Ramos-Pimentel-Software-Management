@@ -4,6 +4,10 @@
  */
 session_start();
 
+// Include database functions
+require_once('../../includes/db_config.php');
+require_once('../../includes/auth_functions.php');
+
 // Validate client session
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'client') {
     header('Location: ../../auth/client-login.php');
@@ -13,7 +17,63 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'client') {
 // Get user information from session
 $user_name = $_SESSION['name'];
 
-$app_id = $_GET['id'] ?? '';
+// Get application ID from URL
+$app_id_param = $_GET['id'] ?? '';
+// Remove #APP- prefix if present
+$application_id = str_replace('#APP-', '', $app_id_param);
+$application_id = intval($application_id);
+
+// Fetch application details from database
+$application = null;
+$error_message = '';
+
+if ($application_id > 0) {
+    $application = getApplicationDetails($application_id);
+    
+    if (!$application) {
+        $error_message = 'Application not found';
+    }
+} else {
+    $error_message = 'Invalid application ID';
+}
+
+// Parse application data (stored as JSON)
+$app_data = array();
+if ($application && isset($application['ApplicationData'])) {
+    $app_data = json_decode($application['ApplicationData'], true) ?? [];
+}
+
+// Format dates
+$date_applied = '';
+if ($application && isset($application['CreatedAt'])) {
+    $created = $application['CreatedAt'];
+    if ($created instanceof DateTime) {
+        $date_applied = $created->format('Y-m-d');
+    } else {
+        $date_applied = date('Y-m-d', strtotime($created));
+    }
+}
+
+$approval_date = '';
+if ($application && isset($application['ApprovalDate']) && $application['ApprovalDate']) {
+    $approved = $application['ApprovalDate'];
+    if ($approved instanceof DateTime) {
+        $approval_date = $approved->format('Y-m-d');
+    } else {
+        $approval_date = date('Y-m-d', strtotime($approved));
+    }
+}
+
+// Format status with badge class
+$status = isset($application['Status']) ? $application['Status'] : 'Pending';
+$status_class = 'badge-secondary';
+if ($status === 'Pending') $status_class = 'badge-warning';
+elseif ($status === 'Processing' || $status === 'In Progress') $status_class = 'badge-info';
+elseif ($status === 'Approved' || $status === 'Completed') $status_class = 'badge-success';
+elseif ($status === 'Rejected' || $status === 'Cancelled') $status_class = 'badge-danger';
+
+// Format application display ID
+$app_id_display = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,72 +108,67 @@ $app_id = $_GET['id'] ?? '';
             </header>
 
             <div class="dashboard-content">
+                <?php if ($error_message): ?>
+                    <div class="alert alert-danger">
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </div>
+                    <a href="my-applications.php" class="btn btn-secondary">Back to Applications</a>
+                <?php else: ?>
                 <div class="form-container">
                     <section class="application-details">
-                        <h3>Application <?php echo htmlspecialchars($app_id); ?></h3>
+                        <h3>Application <?php echo htmlspecialchars($app_id_display); ?></h3>
 
                         <div class="detail-row">
                             <label>Application ID:</label>
-                            <span><?php echo htmlspecialchars($app_id); ?></span>
+                            <span><?php echo htmlspecialchars($app_id_display); ?></span>
                         </div>
 
                         <div class="detail-row">
                             <label>Service Type:</label>
-                            <span>Barangay Clearance</span>
+                            <span><?php echo htmlspecialchars(isset($application['ServiceType']) ? $application['ServiceType'] : 'N/A'); ?></span>
                         </div>
 
                         <div class="detail-row">
                             <label>Date Applied:</label>
-                            <span>2026-03-05</span>
+                            <span><?php echo htmlspecialchars($date_applied); ?></span>
                         </div>
 
                         <div class="detail-row">
                             <label>Current Status:</label>
-                            <span><span class="badge badge-success">Approved</span></span>
+                            <span><span class="badge <?php echo $status_class; ?>"><?php echo htmlspecialchars($status); ?></span></span>
                         </div>
 
+                        <?php if (isset($application['ApprovalDate']) && $application['ApprovalDate'] && $approval_date): ?>
                         <div class="detail-row">
                             <label>Approval Date:</label>
-                            <span>2026-03-06</span>
+                            <span><?php echo htmlspecialchars($approval_date); ?></span>
                         </div>
+                        <?php endif; ?>
 
+                        <?php if (isset($application['ApprovedBy']) && $application['ApprovedBy']): ?>
                         <div class="detail-row">
                             <label>Approved By:</label>
-                            <span>Barangay Secretary</span>
+                            <span><?php echo htmlspecialchars($application['ApprovedBy']); ?></span>
                         </div>
+                        <?php endif; ?>
 
                         <h3 style="margin-top: 2rem;">Application Details</h3>
 
-                        <div class="detail-row">
-                            <label>Full Name:</label>
-                            <span>Juan Dela Cruz</span>
-                        </div>
+                        <?php if ($app_data): ?>
+                            <?php foreach ($app_data as $key => $value): ?>
+                            <div class="detail-row">
+                                <label><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $key))); ?>:</label>
+                                <span><?php echo htmlspecialchars($value); ?></span>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
 
-                        <div class="detail-row">
-                            <label>Date of Birth:</label>
-                            <span>January 15, 1990</span>
-                        </div>
-
-                        <div class="detail-row">
-                            <label>Address:</label>
-                            <span>123 Sample Street, Barangay, City</span>
-                        </div>
-
-                        <div class="detail-row">
-                            <label>Contact Number:</label>
-                            <span>(123) 456-7890</span>
-                        </div>
-
-                        <div class="detail-row">
-                            <label>Purpose:</label>
-                            <span>Employment</span>
-                        </div>
-
+                        <?php if (isset($application['ProcessingNotes']) && $application['ProcessingNotes']): ?>
                         <h3 style="margin-top: 2rem;">Processing Notes</h3>
-
                         <div class="announcement-box">
-                            <p>Your application has been approved. You may pick up your clearance at the barangay office during business hours.</p>
+                            <p><?php echo htmlspecialchars($application['ProcessingNotes']); ?></p>
                         </div>
+                        <?php endif; ?>
                     </section>
 
                     <div class="form-actions">
@@ -121,6 +176,7 @@ $app_id = $_GET['id'] ?? '';
                         <a href="my-applications.php" class="btn btn-secondary">Back to Applications</a>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
         </main>
     </div>

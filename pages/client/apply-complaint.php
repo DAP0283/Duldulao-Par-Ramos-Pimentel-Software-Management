@@ -26,7 +26,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($full_name) || empty($date_of_birth) || empty($address) || empty($purpose)) {
         $error_message = 'Please fill in all required fields';
     } else {
-        $success_message = 'Application submitted successfully! Your clearance will be processed within 1-2 business days.';
+        // Save to database
+        $form_data = array(
+            'full_name' => $full_name,
+            'date_of_birth' => $date_of_birth,
+            'address' => $address,
+            'contact_number' => $contact_number,
+            'purpose' => $purpose
+        );
+        
+        $result = createApplication($_SESSION['user_id'], 'Complaint', $form_data);
+        
+        if ($result['success']) {
+            $success_message = 'Complaint submitted successfully! Your Application ID is: ' . $result['application_id'] . '. Your complaint will be processed within 1-2 business days.';
+        } else {
+            $error_message = 'Error submitting complaint: ' . $result['message'];
+        }
     }
 }
 ?>

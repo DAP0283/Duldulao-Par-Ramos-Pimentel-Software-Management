@@ -55,13 +55,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Registration - Barangay e-Services</title>
+    <title>Resident Registration - Barangay e-Services</title>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
     <div class="auth-container">
         <div class="auth-box auth-box-large">
-            <h2>Client Registration</h2>
+            <h2>Resident Registration</h2>
             
             <?php if (!empty($error_message)): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
