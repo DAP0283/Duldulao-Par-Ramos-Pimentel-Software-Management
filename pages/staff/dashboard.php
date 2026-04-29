@@ -175,7 +175,7 @@ $pending_apps = sqlsrv_query($conn, $pending_apps_query);
                                 <td>#APP-<?php echo str_pad($row['ApplicationID'], 3, '0', STR_PAD_LEFT); ?></td>
                                 <td><?php echo htmlspecialchars($applicant_name); ?></td>
                                 <td><?php echo htmlspecialchars($row['ServiceType']); ?></td>
-                                <td><?php echo date('Y-m-d', strtotime($row['CreatedAt'])); ?></td>
+                                <td><?php echo ($row['CreatedAt'] instanceof DateTime) ? $row['CreatedAt']->format('Y-m-d') : date('Y-m-d', strtotime($row['CreatedAt'])); ?></td>
                                 <td><span class="badge badge-warning">Pending Review</span></td>
                                 <td><a href="review-application.php?id=<?php echo $row['ApplicationID']; ?>" class="btn btn-xs btn-info">Review</a></td>
                             </tr>

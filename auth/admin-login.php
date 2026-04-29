@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="auth-footer">
                 <p><a href="../index.php">Back to Home</a></p>
-                <p class="text-muted">If you are not an administrator, please use <a href="client-login.php">Client Login</a></p>
+                <p class="text-muted">If you are not an administrator, please use <a href="client-login.php">Resident Login</a></p>
             </div>
         </div>
     </div>

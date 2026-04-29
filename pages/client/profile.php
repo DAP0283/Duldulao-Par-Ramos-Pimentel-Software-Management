@@ -210,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Top Navigation Bar -->
             <header class="top-navbar">
                 <div class="navbar-content">
-                    <h2>My Profile</h2>
+                    <h2>Profile - <?php echo htmlspecialchars($user_name); ?></h2>
                     <div class="user-info">
                         <a href="../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
                     </div>

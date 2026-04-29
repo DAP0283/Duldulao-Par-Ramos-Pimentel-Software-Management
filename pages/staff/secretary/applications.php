@@ -81,7 +81,6 @@ if ($stmt !== false) {
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Applications</h2>
-                    <a href="dashboard.php" class="btn btn-sm btn-secondary">Back</a>
                 </div>
             </header>
             <div class="dashboard-content">
@@ -116,7 +115,6 @@ if ($stmt !== false) {
                                     <td><?php echo htmlspecialchars($app['date']); ?></td>
                                     <td><?php echo htmlspecialchars($app['status']); ?></td>
                                     <td>
-                                        <a href="process-application.php?id=<?php echo urlencode($app['application_id']); ?>" class="btn btn-xs btn-info">View</a>
                                         <a href="process-application.php?id=<?php echo urlencode($app['application_id']); ?>" class="btn btn-xs btn-primary">Process</a>
                                     </td>
                                 </tr>

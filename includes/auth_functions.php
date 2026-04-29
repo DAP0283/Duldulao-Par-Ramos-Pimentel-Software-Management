@@ -257,6 +257,8 @@ function createApplication($clientId, $serviceType, $applicationData = null) {
             return ['success' => false, 'message' => 'Database error: ' . $errors[0]['message']];
         }
         
+        $application_id = null;
+        
         // Check if there are rows in the result set
         if (sqlsrv_has_rows($stmt)) {
             $result = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
@@ -267,17 +269,44 @@ function createApplication($clientId, $serviceType, $applicationData = null) {
             }
             
             if ($result['Result'] === 'Success') {
+                $application_id = $result['ApplicationID'] ?? null;
+                
+                // If still null, fetch the latest application for this client
+                if ($application_id === null) {
+                    $latest_stmt = sqlsrv_query($conn, 
+                        "SELECT TOP 1 ApplicationID FROM Applications WHERE ClientID = ? ORDER BY CreatedAt DESC", 
+                        array($clientId)
+                    );
+                    if ($latest_stmt && sqlsrv_has_rows($latest_stmt)) {
+                        $latest = sqlsrv_fetch_array($latest_stmt, SQLSRV_FETCH_ASSOC);
+                        $application_id = $latest['ApplicationID'] ?? null;
+                    }
+                }
+                
                 return [
                     'success' => true,
                     'message' => 'Application submitted successfully',
-                    'application_id' => $result['ApplicationID'] ?? null
+                    'application_id' => $application_id
                 ];
             } else {
                 return ['success' => false, 'message' => $result['Message'] ?? 'Application submission failed'];
             }
         } else {
-            // No rows returned, assume success if no error
-            return ['success' => true, 'message' => 'Application submitted successfully', 'application_id' => null];
+            // No rows returned from stored procedure, fetch the latest application for this client
+            $latest_stmt = sqlsrv_query($conn, 
+                "SELECT TOP 1 ApplicationID FROM Applications WHERE ClientID = ? ORDER BY CreatedAt DESC", 
+                array($clientId)
+            );
+            if ($latest_stmt && sqlsrv_has_rows($latest_stmt)) {
+                $latest = sqlsrv_fetch_array($latest_stmt, SQLSRV_FETCH_ASSOC);
+                $application_id = $latest['ApplicationID'] ?? null;
+            }
+            
+            return [
+                'success' => true, 
+                'message' => 'Application submitted successfully', 
+                'application_id' => $application_id
+            ];
         }
     } catch(Exception $e) {
         return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];

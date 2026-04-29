@@ -25,6 +25,20 @@ $applications = getClientApplications($_SESSION['user_id']);
 if (empty($applications)) {
     $applications = array();
 }
+
+// Get client profile data for display
+$profile = getClientProfile($_SESSION['user_id']);
+if ($profile) {
+    $client_name = $profile['FirstName'] . ' ' . $profile['LastName'];
+} else {
+    $client_name = $user_name;
+}
+
+// Check for successful submission redirect
+$success_message = '';
+if (isset($_GET['success']) && $_GET['success'] == '1' && isset($_GET['application_id'])) {
+    $success_message = 'Application submitted successfully! Your Application ID is: ' . htmlspecialchars($_GET['application_id']) . '. You will receive updates via email.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -58,7 +72,6 @@ if (empty($applications)) {
                 <div class="navbar-content">
                     <h2>My Applications</h2>
                     <div class="user-info">
-                        <span><?php echo htmlspecialchars($user_name); ?></span>
                         <a href="../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
                     </div>
                 </div>
@@ -66,6 +79,12 @@ if (empty($applications)) {
 
             <!-- Applications List -->
             <div class="dashboard-content">
+                <?php if (!empty($success_message)): ?>
+                    <div class="alert alert-success">
+                        <strong>Success!</strong> <?php echo $success_message; ?>
+                    </div>
+                <?php endif; ?>
+
                 <div class="filter-section">
                     <label for="filter-status">Filter by Status:</label>
                     <select id="filter-status" class="form-control">

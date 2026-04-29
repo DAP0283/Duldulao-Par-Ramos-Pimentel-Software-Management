@@ -18,7 +18,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'client') {
 $user_name = $_SESSION['name'];
 
 $error_message = '';
-$success_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $applicant_name = $_POST['applicant_name'] ?? '';
@@ -46,7 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = createApplication($_SESSION['user_id'], 'Burial Assistance', $form_data);
         
         if ($result['success']) {
-            $success_message = 'Application submitted successfully! Your Application ID is: ' . $result['application_id'] . '. Our team will review and contact you soon.';
+            // Redirect to my-applications to avoid form resubmission on back button
+            header('Location: my-applications.php?application_id=' . urlencode($result['application_id']) . '&success=1');
+            exit();
         } else {
             $error_message = 'Error submitting application: ' . $result['message'];
         }
@@ -81,7 +82,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Apply for Burial Assistance</h2>
-                    <a href="dashboard.php" class="btn btn-sm btn-secondary">Back to Dashboard</a>
+                    <div class="user-info">
+                        <a href="dashboard.php" class="btn btn-sm btn-secondary">Back to Dashboard</a>
+                        <a href="../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
+                    </div>
                 </div>
             </header>
 
@@ -91,10 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
                     <?php endif; ?>
 
-                    <?php if (!empty($success_message)): ?>
-                        <div class="alert alert-success"><?php echo htmlspecialchars($success_message); ?></div>
-                        <p><a href="dashboard.php" class="btn btn-primary">Back to Dashboard</a></p>
-                    <?php else: ?>
 
                     <form method="POST" action="">
                         <h3>Applicant Information</h3>
@@ -150,7 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <a href="dashboard.php" class="btn btn-secondary">Cancel</a>
                         </div>
                     </form>
-                    <?php endif; ?>
                 </div>
             </div>
         </main>

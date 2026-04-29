@@ -79,7 +79,6 @@ $recent_apps = sqlsrv_query($conn, $recent_apps_query);
                 <ul>
                     <li><a href="dashboard.php" class="active">Dashboard</a></li>
                     <li><a href="staff-management.php">Staff Management</a></li>
-                    <li><a href="staff-roles.php">Roles & Permissions</a></li>
                     <li><a href="applications.php">Applications</a></li>
                     <li><a href="reports.php">Reports</a></li>
                     <li><a href="messages.php">Messages</a></li>
@@ -93,9 +92,6 @@ $recent_apps = sqlsrv_query($conn, $recent_apps_query);
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Welcome, <?php echo htmlspecialchars($staff_name); ?></h2>
-                    <div class="user-info">
-                        <a href="../../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
-                    </div>
                 </div>
             </header>
 
@@ -124,7 +120,6 @@ $recent_apps = sqlsrv_query($conn, $recent_apps_query);
                     <h3>Administrative Actions</h3>
                     <div class="action-buttons">
                         <a href="staff-management.php" class="btn btn-primary">Manage Staff</a>
-                        <a href="staff-roles.php" class="btn btn-primary">Assign Roles</a>
                         <a href="applications.php" class="btn btn-secondary">Review Applications</a>
                         <a href="reports.php" class="btn btn-secondary">Generate Reports</a>
                     </div>
@@ -164,7 +159,7 @@ $recent_apps = sqlsrv_query($conn, $recent_apps_query);
                                 <td>#APP-<?php echo str_pad($row['ApplicationID'], 3, '0', STR_PAD_LEFT); ?></td>
                                 <td><?php echo htmlspecialchars($applicant_name); ?></td>
                                 <td><?php echo htmlspecialchars($row['ServiceType']); ?></td>
-                                <td><?php echo date('Y-m-d', strtotime($row['CreatedAt'])); ?></td>
+                                <td><?php echo ($row['CreatedAt'] instanceof DateTime) ? $row['CreatedAt']->format('Y-m-d') : date('Y-m-d', strtotime($row['CreatedAt'])); ?></td>
                                 <td><span class="badge <?php echo $status_badge; ?>"><?php echo htmlspecialchars($row['Status']); ?></span></td>
                                 <td><a href="applications.php?id=<?php echo $row['ApplicationID']; ?>" class="btn btn-xs btn-info">Review</a></td>
                             </tr>
@@ -179,13 +174,6 @@ $recent_apps = sqlsrv_query($conn, $recent_apps_query);
                         </tbody>
                     </table>
                     <p><a href="applications.php">View all applications →</a></p>
-                </section>
-
-                <!-- Staff Overview -->
-                <section class="staff-section">
-                    <h3>Staff Overview</h3>
-                    <p>Manage staff roles, permissions, and department assignments.</p>
-                    <a href="staff-management.php" class="btn btn-primary">Go to Staff Management</a>
                 </section>
             </div>
         </main>

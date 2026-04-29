@@ -1,17 +1,20 @@
 <?php
-/**
- * Admin - Manage Users
- */
 session_start();
-
 // Validate admin session
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
     header('Location: ../../auth/admin-login.php');
     exit();
 }
 
-// Get admin information from session
-$admin_name = $_SESSION['name'] ?? $_SESSION['username'] ?? 'Administrator';
+require_once('../../includes/db_config.php');
+
+// Fetch all clients from the database
+$sql = "SELECT ClientID, FirstName, LastName, Email, CreatedAt, IsActive FROM Clients ORDER BY CreatedAt DESC";
+$stmt = sqlsrv_query($conn, $sql);
+
+if ($stmt === false) {
+    die(print_r(sqlsrv_errors(), true));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -43,13 +46,18 @@ $admin_name = $_SESSION['name'] ?? $_SESSION['username'] ?? 'Administrator';
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Manage Users</h2>
-                    <a href="dashboard.php" class="btn btn-sm btn-secondary">Back to Dashboard</a>
                 </div>
             </header>
 
             <div class="dashboard-content">
+                <?php if(isset($_GET['msg'])): ?>
+                    <div class="alert alert-success" style="margin-bottom: 20px;">
+                        <?php echo htmlspecialchars($_GET['msg']); ?>
+                    </div>
+                <?php endif; ?>
+
                 <div class="admin-controls">
-                    <input type="text" id="search-users" class="form-control" placeholder="Search users...">
+                    <input type="text" id="search-users" class="form-control" placeholder="Search residents by name or email...">
                 </div>
 
                 <table class="admin-table">
@@ -64,36 +72,37 @@ $admin_name = $_SESSION['name'] ?? $_SESSION['username'] ?? 'Administrator';
                         </tr>
                     </thead>
                     <tbody>
+                        <?php 
+                        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                            // Correctly format the DateTime object
+                            $reg_date = $row['CreatedAt'] instanceof DateTime ? $row['CreatedAt']->format('Y-m-d') : 'N/A';
+                            $status_class = $row['IsActive'] ? 'badge-success' : 'badge-danger';
+                            $status_text = $row['IsActive'] ? 'Active' : 'Inactive';
+                        ?>
                         <tr>
-                            <td>#USER-001</td>
-                            <td>Juan Dela Cruz</td>
-                            <td>juan@example.com</td>
-                            <td>2026-02-15</td>
-                            <td><span class="badge badge-success">Active</span></td>
-                            <td><a href="#" class="btn btn-xs btn-info">View</a> <a href="#" class="btn btn-xs btn-warning">Edit</a> <a href="#" class="btn btn-xs btn-danger">Deactivate</a></td>
+                            <td class="text-bold">#USER-<?php echo str_pad($row['ClientID'], 3, '0', STR_PAD_LEFT); ?></td>
+                            <td><?php echo htmlspecialchars($row['FirstName'] . ' ' . $row['LastName']); ?></td>
+                            <td><?php echo htmlspecialchars($row['Email']); ?></td>
+                            <td><?php echo $reg_date; ?></td>
+                            <td><span class="badge <?php echo $status_class; ?>"><?php echo $status_text; ?></span></td>
+                            <td>
+                                <a href="edit-user.php?id=<?php echo $row['ClientID']; ?>" class="btn btn-xs btn-warning">Edit</a>
+                                <?php if($row['IsActive']): ?>
+                                    <a href="user-actions.php?action=deactivate&id=<?php echo $row['ClientID']; ?>" 
+                                       class="btn btn-xs btn-danger" 
+                                       onclick="return confirm('Are you sure you want to deactivate this account?')">Deactivate</a>
+                                <?php else: ?>
+                                    <a href="user-actions.php?action=activate&id=<?php echo $row['ClientID']; ?>" 
+                                       class="btn btn-xs btn-success">Activate</a>
+                                <?php endif; ?>
+                            </td>
                         </tr>
-                        <tr>
-                            <td>#USER-002</td>
-                            <td>Maria Santos</td>
-                            <td>maria@example.com</td>
-                            <td>2026-02-18</td>
-                            <td><span class="badge badge-success">Active</span></td>
-                            <td><a href="#" class="btn btn-xs btn-info">View</a> <a href="#" class="btn btn-xs btn-warning">Edit</a> <a href="#" class="btn btn-xs btn-danger">Deactivate</a></td>
-                        </tr>
-                        <tr>
-                            <td>#USER-003</td>
-                            <td>Carlos Rodriguez</td>
-                            <td>carlos@example.com</td>
-                            <td>2026-02-20</td>
-                            <td><span class="badge badge-danger">Inactive</span></td>
-                            <td><a href="#" class="btn btn-xs btn-info">View</a> <a href="#" class="btn btn-xs btn-warning">Edit</a> <a href="#" class="btn btn-xs btn-success">Activate</a></td>
-                        </tr>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>
         </main>
     </div>
-
     <script src="../../assets/js/main.js"></script>
 </body>
-</html>
+</html> 

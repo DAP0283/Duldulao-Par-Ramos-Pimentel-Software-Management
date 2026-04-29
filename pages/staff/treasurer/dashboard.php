@@ -135,7 +135,7 @@ $recent_trans = sqlsrv_query($conn, $recent_trans_query);
                                 <td><?php echo htmlspecialchars($row['TransactionType']); ?></td>
                                 <td>₱<?php echo number_format($row['Amount'], 2); ?></td>
                                 <td><span class="badge <?php echo $status_badge; ?>"><?php echo htmlspecialchars($row['Status']); ?></span></td>
-                                <td><?php echo date('Y-m-d', strtotime($row['CreatedAt'])); ?></td>
+                                <td><?php echo ($row['CreatedAt'] instanceof DateTime) ? $row['CreatedAt']->format('Y-m-d') : date('Y-m-d', strtotime($row['CreatedAt'])); ?></td>
                             </tr>
                             <?php }
                                 if (!$found) {

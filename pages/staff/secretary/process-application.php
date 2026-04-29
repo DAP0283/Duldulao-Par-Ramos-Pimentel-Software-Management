@@ -119,7 +119,6 @@ $app_id_display = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Process Application</h2>
-                    <a href="applications.php" class="btn btn-sm btn-secondary">Back to Applications</a>
                 </div>
             </header>
 

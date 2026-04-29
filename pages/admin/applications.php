@@ -1,18 +1,33 @@
 <?php
-/**
- * Admin - View All Applications
- */
 session_start();
-
 // Validate admin session
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
     header('Location: ../../auth/admin-login.php');
     exit();
 }
 
-// Get admin information from session
-$admin_name = $_SESSION['name'] ?? $_SESSION['username'] ?? 'Administrator';
+require_once('../../includes/db_config.php');
+
 $status_filter = $_GET['status'] ?? '';
+
+// Build Query: Join with Clients and Staff
+$sql = "SELECT a.ApplicationID, a.ServiceType, a.Status, a.CreatedAt, 
+               c.FirstName, c.LastName, 
+               s.FirstName as StaffF, s.LastName as StaffL 
+        FROM Applications a 
+        INNER JOIN Clients c ON a.ClientID = c.ClientID 
+        LEFT JOIN Staff s ON a.AssignedToStaffID = s.StaffID";
+
+if (!empty($status_filter)) {
+    $sql .= " WHERE a.Status = ?";
+    $stmt = sqlsrv_query($conn, $sql, array($status_filter));
+} else {
+    $stmt = sqlsrv_query($conn, $sql);
+}
+
+if ($stmt === false) {
+    die(print_r(sqlsrv_errors(), true));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,20 +59,21 @@ $status_filter = $_GET['status'] ?? '';
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>All Applications</h2>
-                    <a href="dashboard.php" class="btn btn-sm btn-secondary">Back to Dashboard</a>
                 </div>
             </header>
 
             <div class="dashboard-content">
                 <div class="admin-controls">
-                    <select id="filter-status" class="form-control">
-                        <option value="">All Applications</option>
-                        <option value="pending" <?php echo $status_filter === 'pending' ? 'selected' : ''; ?>>Pending</option>
-                        <option value="in-progress" <?php echo $status_filter === 'in-progress' ? 'selected' : ''; ?>>In Progress</option>
-                        <option value="approved" <?php echo $status_filter === 'approved' ? 'selected' : ''; ?>>Approved</option>
-                        <option value="rejected" <?php echo $status_filter === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
-                        <option value="completed" <?php echo $status_filter === 'completed' ? 'selected' : ''; ?>>Completed</option>
-                    </select>
+                    <form method="GET" action="">
+                        <select name="status" class="form-control" onchange="this.form.submit()">
+                            <option value="">Filter by Status: All</option>
+                            <option value="Pending" <?php echo $status_filter === 'Pending' ? 'selected' : ''; ?>>Pending</option>
+                            <option value="Processing" <?php echo $status_filter === 'Processing' ? 'selected' : ''; ?>>Processing</option>
+                            <option value="Approved" <?php echo $status_filter === 'Approved' ? 'selected' : ''; ?>>Approved</option>
+                            <option value="Rejected" <?php echo $status_filter === 'Rejected' ? 'selected' : ''; ?>>Rejected</option>
+                            <option value="Completed" <?php echo $status_filter === 'Completed' ? 'selected' : ''; ?>>Completed</option>
+                        </select>
+                    </form>
                 </div>
 
                 <table class="admin-table">
@@ -73,39 +89,38 @@ $status_filter = $_GET['status'] ?? '';
                         </tr>
                     </thead>
                     <tbody>
+                        <?php 
+                        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                            // Consistent Badge Logic
+                            $badge_class = match($row['Status']) {
+                                'Approved', 'Completed' => 'badge-success',
+                                'Rejected' => 'badge-danger',
+                                'Processing' => 'badge-info',
+                                default => 'badge-warning' // Matches dashboard color
+                            };
+
+                            // Correctly format the DateTime object
+                            $date_applied = $row['CreatedAt'] instanceof DateTime ? $row['CreatedAt']->format('Y-m-d') : 'N/A';
+                            
+                            $staff_name = $row['StaffF'] ? $row['StaffF'] . ' ' . $row['StaffL'] : 'Unassigned';
+                        ?>
                         <tr>
-                            <td>#APP-001</td>
-                            <td>Juan Dela Cruz</td>
-                            <td>Barangay Clearance</td>
-                            <td>2026-03-05</td>
-                            <td><span class="badge badge-success">Approved</span></td>
-                            <td>Secretary</td>
-                            <td><a href="#" class="btn btn-xs btn-info">View</a> <a href="#" class="btn btn-xs btn-danger">Delete</a></td>
+                            <td class="text-bold">#APP-<?php echo str_pad($row['ApplicationID'], 3, '0', STR_PAD_LEFT); ?></td>
+                            <td><?php echo htmlspecialchars($row['FirstName'] . ' ' . $row['LastName']); ?></td>
+                            <td><?php echo htmlspecialchars($row['ServiceType']); ?></td>
+                            <td><?php echo $date_applied; ?></td>
+                            <td><span class="badge <?php echo $badge_class; ?>"><?php echo htmlspecialchars($row['Status']); ?></span></td>
+                            <td><?php echo htmlspecialchars($staff_name); ?></td>
+                            <td>
+                                <a href="view-application.php?id=<?php echo $row['ApplicationID']; ?>" class="btn btn-xs btn-info">View/Process</a>
+                            </td>
                         </tr>
-                        <tr>
-                            <td>#APP-002</td>
-                            <td>Maria Santos</td>
-                            <td>Barangay ID</td>
-                            <td>2026-03-04</td>
-                            <td><span class="badge badge-warning">Pending</span></td>
-                            <td>Unassigned</td>
-                            <td><a href="#" class="btn btn-xs btn-info">View</a> <a href="#" class="btn btn-xs btn-warning">Assign</a> <a href="#" class="btn btn-xs btn-danger">Delete</a></td>
-                        </tr>
-                        <tr>
-                            <td>#APP-003</td>
-                            <td>Carlos Rodriguez</td>
-                            <td>Burial Assistance</td>
-                            <td>2026-03-01</td>
-                            <td><span class="badge badge-info">In Progress</span></td>
-                            <td>Treasurer</td>
-                            <td><a href="#" class="btn btn-xs btn-info">View</a> <a href="#" class="btn btn-xs btn-danger">Delete</a></td>
-                        </tr>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>
         </main>
     </div>
-
     <script src="../../assets/js/main.js"></script>
 </body>
 </html>

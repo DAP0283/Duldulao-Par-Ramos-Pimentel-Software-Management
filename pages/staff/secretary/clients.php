@@ -5,6 +5,30 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'staff' || $_SESS
     exit();
 }
 require_once('../../../includes/db_config.php');
+
+// Fetch all clients from database
+$clients = array();
+$query = "SELECT ClientID, FirstName, LastName, Email, PhoneNumber, CreatedAt FROM Clients ORDER BY CreatedAt DESC";
+$stmt = sqlsrv_query($conn, $query);
+
+if ($stmt !== false) {
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        $created = $row['CreatedAt'];
+        if ($created instanceof DateTime) {
+            $date_joined = $created->format('Y-m-d');
+        } else {
+            $date_joined = date('Y-m-d', strtotime($created));
+        }
+        
+        $clients[] = array(
+            'id' => $row['ClientID'],
+            'name' => ($row['FirstName'] ?? 'Unknown') . ' ' . ($row['LastName'] ?? ''),
+            'email' => $row['Email'] ?? 'N/A',
+            'phone' => $row['PhoneNumber'] ?? 'N/A',
+            'joined' => $date_joined
+        );
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,7 +59,6 @@ require_once('../../../includes/db_config.php');
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Client Management</h2>
-                    <a href="dashboard.php" class="btn btn-sm btn-secondary">Back</a>
                 </div>
             </header>
             <div class="dashboard-content">
@@ -53,7 +76,21 @@ require_once('../../../includes/db_config.php');
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="5">No clients found</td></tr>
+                            <?php if (!empty($clients)): ?>
+                                <?php foreach ($clients as $client): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($client['name']); ?></td>
+                                    <td><?php echo htmlspecialchars($client['email']); ?></td>
+                                    <td><?php echo htmlspecialchars($client['phone']); ?></td>
+                                    <td><?php echo htmlspecialchars($client['joined']); ?></td>
+                                    <td>
+                                        <a href="view-client.php?id=<?php echo urlencode($client['id']); ?>" class="btn btn-sm btn-primary">View</a>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="5">No clients found</td></tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </section>

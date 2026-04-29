@@ -21,7 +21,7 @@ if (isset($_SESSION['user_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brgy. Cogunan e-Services</title>
+    <title>Brgy. 7 e-Services</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
@@ -145,7 +145,7 @@ if (isset($_SESSION['user_id'])) {
 <body>
     <div class="hero">
         <div class="hero-content">
-            <h1>Brgy. Cogunan e-Services</h1>
+            <h1>Brgy. 7 e-Services</h1>
             <p>Apply for essential barangay services online, anytime, anywhere</p>
             <div class="nav-buttons">
                 <a href="auth/client-login.php" class="btn btn-primary">Resident Login</a>
@@ -156,7 +156,7 @@ if (isset($_SESSION['user_id'])) {
     </div>
 
     <footer>
-        <p>&copy; 2026, For Brgy. Cogunan, Nasugbu, Batangas.</p>
+        <p>&copy; 2026, For Brgy. 7, Nasugbu, Batangas.</p>
     </footer>
 </body>
 </html>

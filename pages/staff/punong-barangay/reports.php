@@ -40,7 +40,6 @@ $staff_name = $_SESSION['name'];
                 <ul>
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="staff-management.php">Staff Management</a></li>
-                    <li><a href="staff-roles.php">Roles & Permissions</a></li>
                     <li><a href="applications.php">Applications</a></li>
                     <li><a href="reports.php" class="active">Reports</a></li>
                     <li><a href="messages.php">Messages</a></li>
@@ -53,9 +52,6 @@ $staff_name = $_SESSION['name'];
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Administrative Reports</h2>
-                    <div class="user-info">
-                        <a href="../../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
-                    </div>
                 </div>
             </header>
 

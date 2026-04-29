@@ -103,7 +103,10 @@ $app_id_display = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Application Details</h2>
-                    <a href="my-applications.php" class="btn btn-sm btn-secondary">Back to Applications</a>
+                    <div class="user-info">
+                        <a href="my-applications.php" class="btn btn-sm btn-secondary">Back to Applications</a>
+                        <a href="../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
+                    </div>
                 </div>
             </header>
 

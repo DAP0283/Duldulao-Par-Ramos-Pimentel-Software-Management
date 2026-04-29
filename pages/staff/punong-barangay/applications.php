@@ -93,7 +93,6 @@ if ($stmt !== false) {
                 <ul>
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="staff-management.php">Staff Management</a></li>
-                    <li><a href="staff-roles.php">Roles & Permissions</a></li>
                     <li><a href="applications.php" class="active">Applications</a></li>
                     <li><a href="reports.php">Reports</a></li>
                     <li><a href="messages.php">Messages</a></li>
@@ -106,7 +105,6 @@ if ($stmt !== false) {
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Applications</h2>
-                    <a href="dashboard.php" class="btn btn-sm btn-secondary">Back to Dashboard</a>
                 </div>
             </header>
 

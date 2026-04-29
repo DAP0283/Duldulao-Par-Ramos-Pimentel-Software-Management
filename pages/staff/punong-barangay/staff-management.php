@@ -201,7 +201,6 @@ $available_departments = array(
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h3>Barangay Executive</h3>
@@ -211,7 +210,6 @@ $available_departments = array(
                 <ul>
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="staff-management.php" class="active">Staff Management</a></li>
-                    <li><a href="staff-roles.php">Roles & Permissions</a></li>
                     <li><a href="applications.php">Applications</a></li>
                     <li><a href="reports.php">Reports</a></li>
                     <li><a href="messages.php">Messages</a></li>
@@ -220,19 +218,14 @@ $available_departments = array(
             </nav>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content">
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Staff Management</h2>
-                    <div class="user-info">
-                        <a href="../../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
-                    </div>
                 </div>
             </header>
 
             <div class="dashboard-content">
-                <!-- Staff Management Section -->
                 <section class="staff-section">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h3>Staff Members</h3>
@@ -245,7 +238,6 @@ $available_departments = array(
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Position</th>
-                                <th>Role</th>
                                 <th>Department</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -257,7 +249,6 @@ $available_departments = array(
                                 <td><?php echo htmlspecialchars($staff['FirstName'] . ' ' . $staff['LastName']); ?></td>
                                 <td><?php echo htmlspecialchars($staff['Email']); ?></td>
                                 <td><?php echo htmlspecialchars($staff['Position'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($staff['Role'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($staff['Department'] ?? 'N/A'); ?></td>
                                 <td>
                                     <span class="staff-status <?php echo $staff['IsActive'] ? 'status-active' : 'status-inactive'; ?>">
@@ -266,7 +257,6 @@ $available_departments = array(
                                 </td>
                                 <td class="action-cell">
                                     <button class="btn btn-xs btn-info" onclick="openEditStaffModal(<?php echo htmlspecialchars(json_encode($staff)); ?>)">Edit</button>
-                                    <button class="btn btn-xs btn-warning" onclick="openRoleModal(<?php echo $staff['StaffID']; ?>, '<?php echo htmlspecialchars($staff['FirstName'] . ' ' . $staff['LastName']); ?>', '<?php echo htmlspecialchars($staff['Role']); ?>')">Change Role</button>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -274,7 +264,6 @@ $available_departments = array(
                     </table>
                 </section>
 
-                <!-- Staff Summary -->
                 <section class="staff-section">
                     <h3>Staff Summary</h3>
                     <p>Total active staff: <strong><?php echo count(array_filter($staff_members, function($s) { return $s['IsActive']; })); ?></strong></p>
@@ -284,7 +273,6 @@ $available_departments = array(
         </main>
     </div>
 
-    <!-- Modal for Adding New Staff -->
     <div id="addStaffModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -343,7 +331,6 @@ $available_departments = array(
         </div>
     </div>
 
-    <!-- Modal for Editing Staff -->
     <div id="editStaffModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -390,39 +377,6 @@ $available_departments = array(
         </div>
     </div>
 
-    <!-- Modal for Changing Role -->
-    <div id="roleModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Change Staff Role</h3>
-                <button class="close-modal" onclick="closeRoleModal()">&times;</button>
-            </div>
-            <form method="POST" onsubmit="handleChangeRole(event)">
-                <input type="hidden" id="role_staff_id" name="staff_id">
-                <div class="form-group">
-                    <label>Staff Member: <span id="role_staff_name"></span></label>
-                </div>
-                <div class="form-group">
-                    <label for="new_role">New Role <span class="required">*</span></label>
-                    <select id="new_role" name="role" required>
-                        <option value="">Select Role</option>
-                        <?php foreach ($available_roles as $r): ?>
-                        <option value="<?php echo htmlspecialchars($r); ?>"><?php echo htmlspecialchars($r); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="role_notes">Notes</label>
-                    <input type="text" id="role_notes" name="notes" placeholder="Reason for role change">
-                </div>
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button type="submit" class="btn btn-primary">Change Role</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeRoleModal()">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <script>
         function openAddStaffModal() {
             document.getElementById('addStaffModal').classList.add('show');
@@ -455,57 +409,6 @@ $available_departments = array(
         function handleEditStaff(event) {
             event.preventDefault();
             alert('Staff member edit feature coming soon!');
-        }
-
-        function openRoleModal(staffId, staffName, currentRole) {
-            document.getElementById('role_staff_id').value = staffId;
-            document.getElementById('role_staff_name').textContent = staffName + ' (Current: ' + currentRole + ')';
-            document.getElementById('new_role').value = '';
-            document.getElementById('role_notes').value = '';
-            document.getElementById('roleModal').classList.add('show');
-        }
-
-        function closeRoleModal() {
-            document.getElementById('roleModal').classList.remove('show');
-        }
-
-        function handleChangeRole(event) {
-            event.preventDefault();
-            
-            const staffId = document.getElementById('role_staff_id').value;
-            const newRole = document.getElementById('new_role').value;
-            const notes = document.getElementById('role_notes').value;
-            
-            if (!newRole) {
-                alert('Please select a new role');
-                return;
-            }
-            
-            // AJAX request to update role
-            const formData = new FormData();
-            formData.append('action', 'update_role');
-            formData.append('staff_id', staffId);
-            formData.append('new_role', newRole);
-            formData.append('notes', notes);
-            
-            fetch('staff-management.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Staff role updated successfully!');
-                    closeRoleModal();
-                    location.reload();
-                } else {
-                    alert('Error updating role: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while updating the role');
-            });
         }
 
         document.addEventListener('click', function(event) {

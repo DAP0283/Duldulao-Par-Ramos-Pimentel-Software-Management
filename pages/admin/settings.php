@@ -1,23 +1,34 @@
 <?php
-/**
- * Admin - System Settings
- */
 session_start();
-
-// Validate admin session
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
     header('Location: ../../auth/admin-login.php');
     exit();
 }
-
-// Get admin information from session
-$admin_name = $_SESSION['name'] ?? $_SESSION['username'] ?? 'Administrator';
+require_once('../../includes/db_config.php');
 
 $success_message = '';
 
+// Logic: Handle Settings Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // TODO: Save settings to database
-    $success_message = 'Settings saved successfully!';
+    foreach ($_POST as $key => $value) {
+        // Upsert logic for MSSQL SystemSettings table
+        $sql = "IF EXISTS (SELECT 1 FROM SystemSettings WHERE SettingKey = ?)
+                UPDATE SystemSettings SET SettingValue = ? WHERE SettingKey = ?
+                ELSE
+                INSERT INTO SystemSettings (SettingKey, SettingValue) VALUES (?, ?)";
+        $params = array($key, $value, $key, $key, $value);
+        sqlsrv_query($conn, $sql, $params);
+    }
+    $success_message = 'System configuration updated successfully.';
+}
+
+// Logic: Fetch all settings into an associative array
+$settings = [];
+$res = sqlsrv_query($conn, "SELECT SettingKey, SettingValue FROM SystemSettings");
+if ($res) {
+    while($row = sqlsrv_fetch_array($res, SQLSRV_FETCH_ASSOC)) {
+        $settings[$row['SettingKey']] = $row['SettingValue'];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -50,66 +61,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>System Settings</h2>
-                    <a href="dashboard.php" class="btn btn-sm btn-secondary">Back to Dashboard</a>
                 </div>
             </header>
 
             <div class="dashboard-content">
+                <?php if (!empty($success_message)): ?>
+                    <div class="alert alert-success"><?php echo htmlspecialchars($success_message); ?></div>
+                <?php endif; ?>
+
                 <div class="form-container">
-                    <?php if (!empty($success_message)): ?>
-                        <div class="alert alert-success"><?php echo htmlspecialchars($success_message); ?></div>
-                    <?php endif; ?>
-
                     <form method="POST" action="">
-                        <h3>Barangay Information</h3>
+                        <section class="admin-section">
+                            <h3>General Configuration</h3>
+                            <div class="form-group">
+                                <label for="barangay_name">Barangay Name</label>
+                                <input type="text" id="barangay_name" name="barangay_name" 
+                                       class="form-control" value="<?php echo htmlspecialchars($settings['barangay_name'] ?? 'Barangay Sample'); ?>">
+                            </div>
 
-                        <div class="form-group">
-                            <label for="barangay_name">Barangay Name</label>
-                            <input type="text" id="barangay_name" name="barangay_name" 
-                                   class="form-control" value="Barangay Sample">
-                        </div>
+                            <div class="form-group">
+                                <label for="barangay_address">Official Address</label>
+                                <input type="text" id="barangay_address" name="barangay_address" 
+                                       class="form-control" value="<?php echo htmlspecialchars($settings['barangay_address'] ?? 'Sample Address, City, Province'); ?>">
+                            </div>
 
-                        <div class="form-group">
-                            <label for="barangay_address">Address</label>
-                            <input type="text" id="barangay_address" name="barangay_address" 
-                                   class="form-control" value="Sample Address, City, Province">
-                        </div>
+                            <div class="form-group">
+                                <label for="contact_number">Public Contact Number</label>
+                                <input type="tel" id="contact_number" name="contact_number" 
+                                       class="form-control" value="<?php echo htmlspecialchars($settings['contact_number'] ?? '(123) 456-7890'); ?>">
+                            </div>
+                        </section>
 
-                        <div class="form-group">
-                            <label for="contact_number">Contact Number</label>
-                            <input type="tel" id="contact_number" name="contact_number" 
-                                   class="form-control" value="(123) 456-7890">
-                        </div>
+                        <section class="admin-section" style="margin-top: 30px;">
+                            <h3>Processing Controls</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="max_pending_apps">Max Pending Apps per User</label>
+                                    <input type="number" id="max_pending_apps" name="max_pending_apps" 
+                                           class="form-control" value="<?php echo htmlspecialchars($settings['max_pending_apps'] ?? '5'); ?>">
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; padding-top: 25px;">
+                                    <input type="checkbox" id="enable_online_payment" name="enable_online_payment" value="1" 
+                                        <?php echo (isset($settings['enable_online_payment']) && $settings['enable_online_payment'] == '1') ? 'checked' : ''; ?>>
+                                    <label for="enable_online_payment" style="margin-left: 10px; margin-bottom: 0;">Enable Online Payment System</label>
+                                </div>
+                            </div>
 
-                        <h3 style="margin-top: 30px;">Application Processing Settings</h3>
+                            <div class="form-group">
+                                <label for="notification_email">System Notification Email</label>
+                                <input type="email" id="notification_email" name="notification_email" 
+                                       class="form-control" value="<?php echo htmlspecialchars($settings['notification_email'] ?? 'notifications@barangay.gov'); ?>">
+                            </div>
+                        </section>
 
-                        <div class="form-group">
-                            <label for="max_pending_apps">Maximum Pending Applications per User</label>
-                            <input type="number" id="max_pending_apps" name="max_pending_apps" 
-                                   class="form-control" value="5">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="enable_online_payment">Enable Online Payment</label>
-                            <input type="checkbox" id="enable_online_payment" name="enable_online_payment" checked>
-                        </div>
-
-                        <h3 style="margin-top: 30px;">Email Notifications</h3>
-
-                        <div class="form-group">
-                            <label for="notification_email">Notification Email</label>
-                            <input type="email" id="notification_email" name="notification_email" 
-                                   class="form-control" value="notifications@barangay.gov">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="enable_notifications">Enable Email Notifications</label>
-                            <input type="checkbox" id="enable_notifications" name="enable_notifications" checked>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Save Settings</button>
-                            <a href="dashboard.php" class="btn btn-secondary">Cancel</a>
+                        <div class="form-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                            <button type="submit" class="btn btn-primary">Save All Settings</button>
+                            <a href="dashboard.php" class="btn btn-secondary">Discard Changes</a>
                         </div>
                     </form>
                 </div>
