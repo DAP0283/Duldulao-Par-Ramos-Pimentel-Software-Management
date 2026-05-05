@@ -1,0 +1,268 @@
+# Database Setup Instructions
+
+## Overview
+This Barangay e-Services system uses SQL Server (T-SQL) for the database. All tables, stored procedures, and views have been created to support the authentication and application management system.
+
+## Prerequisites
+- SQL Server 2016 or later
+- SQL Server Management Studio (SSMS)
+- PHP 7.4+ with PDO support for SQL Server
+- XAMPP with Apache enabled
+
+## Installation Steps
+
+### Step 1: Create the Database
+
+1. Open **SQL Server Management Studio (SSMS)**
+2. Connect to your SQL Server instance
+3. Open the file: `database/schema.sql`
+4. Execute the entire script (Ctrl + Shift + E or F5)
+5. Verify that all objects were created successfully
+
+Expected output:
+```
+Database Setup Complete!
+Tables Created:
+  - Clients
+  - Admins (with default admin account)
+  - Staff
+  - Applications
+```
+
+### Step 2: Configure Database Connection
+
+Edit `includes/db_config.php` and update these values to match your SQL Server setup:
+
+```php
+define('DB_SERVER', 'localhost');        // Your SQL Server name
+define('DB_USERNAME', 'sa');             // Your SQL Server username
+define('DB_PASSWORD', 'your_password');  // Your SQL Server password
+define('DB_NAME', 'BarangayEServices');  // Database name
+```
+
+**Common values:**
+- Local machine: `localhost` or `.\SQLEXPRESS`
+- Named instance: `localhost\SQLEXPRESS`
+- Different port: `localhost,1433`
+
+### Step 3: Test the Connection
+
+1. Start Apache in XAMPP
+2. Open browser and go to `http://localhost/softeng-prog-1/`
+3. Try clicking on any login button
+4. If you see a connection error, verify your credentials in `db_config.php`
+
+## Database Schema
+
+### Tables
+
+#### 1. Clients Table
+Stores client/citizen information
+- **ClientID**: Primary key (auto-increment)
+- **Email**: Unique email address (used for login)
+- **Password**: Password (plain text for now, should be hashed)
+- **FirstName, LastName, MiddleName**: Client name
+- **PhoneNumber**: Contact number
+- **Address**: Residential address
+- **BirthDate**: Date of birth
+- **Gender**: Male/Female
+- **CivilStatus**: Single/Married/Widowed/Separated
+- **Occupation**: Client's occupation
+- **CreatedAt, UpdatedAt**: Timestamps
+- **IsActive**: Account status (1=active, 0=inactive)
+
+#### 2. Admins Table
+Stores administrator accounts
+- **AdminID**: Primary key
+- **Username**: Unique username (used for login)
+- **Password**: Password (default: admin123)
+- **FullName**: Admin's full name
+- **Email**: Email address
+- **PhoneNumber**: Contact number
+- **CreatedAt, UpdatedAt**: Timestamps
+- **IsActive**: Account status
+
+#### 3. Staff Table
+Stores staff/officer information
+- **StaffID**: Primary key
+- **Email**: Unique email (used for login)
+- **Password**: Password
+- **FirstName, LastName, MiddleName**: Staff name
+- **PhoneNumber**: Contact number
+- **Position**: Job position (Punong Barangay, Secretary, Treasurer, etc.)
+- **Role**: Role in system (used for permissions)
+- **Department**: Department assignment
+- **CreatedAt, UpdatedAt**: Timestamps
+- **IsActive**: Account status
+
+#### 4. Applications Table
+Stores service applications submitted by clients
+- **ApplicationID**: Primary key
+- **ClientID**: Foreign key to Clients table
+- **ServiceType**: Type of service (Barangay ID, Burial, Clearance, Complaint)
+- **Status**: Application status (Pending, Processing, Approved, Rejected)
+- **ApplicationData**: JSON format flexible data storage
+- **CreatedAt, UpdatedAt**: Timestamps
+- **AssignedToStaffID**: Foreign key to Staff table
+- **ProcessingNotes**: Notes from staff
+- **ApprovedBy**: Foreign key to Staff who approved
+- **ApprovalDate**: Date of approval
+
+## Default Credentials
+
+### Admin Account
+```
+Username: admin
+Password: admin123
+```
+
+⚠️ **IMPORTANT**: Change this password after first login!
+
+## API Functions
+
+All authentication and database operations are wrapped in PHP functions in `includes/auth_functions.php`:
+
+### Client Functions
+```php
+validateClientLogin($email, $password)      // Login client
+registerClient($email, $password, ...)      // Register new client
+getClientProfile($clientId)                 // Get profile info
+updateClientProfile($clientId, $data)       // Update profile
+getClientApplications($clientId)            // Get client's applications
+createApplication($clientId, $serviceType)  // Submit application
+```
+
+### Admin Functions
+```php
+validateAdminLogin($username, $password)    // Login admin
+getAllApplications($status)                 // Get all applications
+getStaffMembers($role)                      // Get staff list
+```
+
+### Staff Functions
+```php
+validateStaffLogin($email, $password)       // Login staff
+getPendingApplicationsForStaff($staffId)    // Get assigned apps
+updateApplicationStatus($appId, $status)    // Approve/reject apps
+```
+
+## Sample Data (Optional)
+
+To insert sample staff members, run these commands in SSMS:
+
+```sql
+INSERT INTO Staff (Email, Password, FirstName, LastName, Position, Role, Department, IsActive)
+VALUES 
+    ('punong@barangay.gov.ph', 'password123', 'Juan', 'Dela Cruz', 'Punong Barangay', 'Punong Barangay', 'Administration', 1),
+    ('secretary@barangay.gov.ph', 'password123', 'Maria', 'Santos', 'Barangay Secretary', 'Barangay Secretary', 'Administration', 1),
+    ('treasurer@barangay.gov.ph', 'password123', 'Pedro', 'Garcia', 'Barangay Treasurer', 'Barangay Treasurer', 'Finance', 1),
+    ('sanggunian@barangay.gov.ph', 'password123', 'Ana', 'Reyes', 'Sangguniang Member', 'Sanggunian Member', 'Legislative', 1);
+```
+
+## File Structure
+
+```
+softeng-prog-1/
+├── database/
+│   ├── schema.sql           (Database creation script)
+│   └── SETUP_GUIDE.sql      (This setup guide)
+├── includes/
+│   ├── db_config.php        (Database connection - UPDATE THIS!)
+│   ├── auth_functions.php   (Authentication functions)
+│   └── session_check.php    (Session validation)
+├── auth/
+│   ├── client-login.php
+│   ├── client-register.php
+│   ├── admin-login.php
+│   ├── staff-login.php
+│   └── logout.php
+└── pages/
+    ├── client/
+    ├── admin/
+    └── staff/
+```
+
+## Troubleshooting
+
+### Connection Errors
+**Problem**: "Connection Failed: Could not open database"
+**Solution**: 
+- Verify DB_SERVER, DB_USERNAME, DB_PASSWORD in db_config.php
+- Ensure SQL Server is running
+- Check that the database name is correct
+
+### Login Fails
+**Problem**: "Invalid email or password" or "Database error"
+**Solution**:
+- Verify user exists in database
+- Check that IsActive = 1
+- Verify credentials are spelled correctly
+- Check database logs for errors
+
+### Stored Procedures Not Found
+**Problem**: "Procedure sp_ValidateClientLogin not found"
+**Solution**:
+- Run the complete schema.sql file in SSMS
+- Verify all stored procedures were created
+- Check database name in error message matches DB_NAME in config
+
+### Permission Denied
+**Problem**: "Login failed for user 'sa'"
+**Solution**:
+- Verify SQL Server authentication is enabled
+- Check SQL Server user has appropriate permissions
+- Ensure Mixed Authentication is enabled in SQL Server
+
+## Next Steps
+
+1. ✅ Create database with schema.sql
+2. ✅ Update db_config.php with your credentials
+3. ✅ Test login pages
+4. ✅ Create staff accounts through admin panel
+5. ⏳ Implement password hashing (bcrypt)
+6. ⏳ Add CSRF protection
+7. ⏳ Set up email notifications
+8. ⏳ Implement file uploads for applications
+
+## Important Security Notes
+
+⚠️ **Before Production:**
+
+1. **Password Hashing**: Currently passwords are stored in plain text. Implement bcrypt hashing:
+   ```php
+   // In auth_functions.php
+   function hashPassword($password) {
+       return password_hash($password, PASSWORD_BCRYPT);
+   }
+   ```
+
+2. **SQL Injection**: All queries use parameterized statements (prepared statements), which are safe.
+
+3. **Session Security**: 
+   - Add HTTPS requirement
+   - Set secure cookie flags
+   - Implement CSRF tokens
+
+4. **Access Control**: 
+   - Verify user permissions before operations
+   - Log all admin actions
+   - Implement audit trails
+
+5. **Data Protection**:
+   - Regular backups
+   - Encryption at rest
+   - Encryption in transit (HTTPS)
+
+## Support & Documentation
+
+- **Database Files**: `database/` folder
+- **PHP Functions**: `includes/` folder
+- **Login Pages**: `auth/` folder
+- **Application Pages**: `pages/` folder
+- **Styling**: `assets/css/style.css`
+
+---
+
+**Database Setup Version**: 1.0  
+**Last Updated**: March 7, 2026  
+**SQL Server Version**: 2016+

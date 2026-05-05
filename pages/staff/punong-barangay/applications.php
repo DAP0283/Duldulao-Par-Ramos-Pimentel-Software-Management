@@ -1,0 +1,169 @@
+<?php
+/**
+ * Applications Management - Punong Barangay
+ */
+session_start();
+
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'staff') {
+    header('Location: ../../../auth/staff-login.php');
+    exit();
+}
+
+$staff_role = $_SESSION['role'] ?? '';
+if ($staff_role !== 'Punong Barangay') {
+    header('Location: ../dashboard.php');
+    exit();
+}
+
+require_once('../../../includes/db_config.php');
+require_once('../../../includes/auth_functions.php');
+
+$staff_name = $_SESSION['name'];
+$status_filter = $_GET['status'] ?? '';
+
+// Fetch applications from database
+$applications = array();
+$query = "SELECT a.ApplicationID, a.ClientID, a.ServiceType, a.Status, a.CreatedAt, c.FirstName, c.LastName
+          FROM Applications a
+          LEFT JOIN Clients c ON a.ClientID = c.ClientID";
+
+if ($status_filter && $status_filter !== '') {
+    // Map lowercase status to database values
+    $status_map = array(
+        'pending' => 'Pending',
+        'in-progress' => 'Processing',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected'
+    );
+    
+    $db_status = $status_map[$status_filter] ?? 'Pending';
+    $query .= " WHERE a.Status = ?";
+    $params = array($db_status);
+    $stmt = sqlsrv_query($conn, $query, $params);
+} else {
+    $stmt = sqlsrv_query($conn, $query);
+}
+
+if ($stmt !== false) {
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        // Format date
+        $created = $row['CreatedAt'];
+        if ($created instanceof DateTime) {
+            $date_formatted = $created->format('Y-m-d');
+        } else {
+            $date_formatted = date('Y-m-d', strtotime($created));
+        }
+        
+        // Get status badge class
+        $status = $row['Status'];
+        $status_class = 'badge-secondary';
+        if ($status === 'Pending') $status_class = 'badge-warning';
+        elseif ($status === 'Processing') $status_class = 'badge-info';
+        elseif ($status === 'Approved') $status_class = 'badge-success';
+        elseif ($status === 'Rejected') $status_class = 'badge-danger';
+        
+        $applications[] = array(
+            'id' => '#APP-' . str_pad($row['ApplicationID'], 5, '0', STR_PAD_LEFT),
+            'application_id' => $row['ApplicationID'],
+            'applicant' => ($row['FirstName'] ?? 'Unknown') . ' ' . ($row['LastName'] ?? ''),
+            'service' => $row['ServiceType'],
+            'date' => $date_formatted,
+            'status' => $status,
+            'status_class' => $status_class
+        );
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applications - Barangay e-Services</title>
+    <link rel="stylesheet" href="../../../assets/css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Barangay Executive</h3>
+                <p class="role-badge">Punong Barangay</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.php">Dashboard</a></li>
+                    <li><a href="staff-management.php">Staff Management</a></li>
+                    <li><a href="applications.php" class="active">Applications</a></li>
+                    <li><a href="reports.php">Reports</a></li>
+                    <li><a href="messages.php">Messages</a></li>
+                    <li><a href="../../../auth/logout.php">Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-navbar">
+                <div class="navbar-content">
+                    <h2>Applications</h2>
+                </div>
+            </header>
+
+            <div class="dashboard-content">
+                <div class="admin-controls">
+                    <select id="filter-status" class="form-control" onchange="filterApplications(this.value)">
+                        <option value="">All Applications</option>
+                        <option value="pending" <?php echo $status_filter === 'pending' ? 'selected' : ''; ?>>Pending Review</option>
+                        <option value="in-progress" <?php echo $status_filter === 'in-progress' ? 'selected' : ''; ?>>In Progress</option>
+                        <option value="approved" <?php echo $status_filter === 'approved' ? 'selected' : ''; ?>>Approved</option>
+                        <option value="rejected" <?php echo $status_filter === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+                    </select>
+                    <input type="text" id="search-app" class="form-control" placeholder="Search applicant name...">
+                </div>
+
+                <section class="staff-section">
+                    <h3>All Applications</h3>
+                    <table class="staff-table">
+                        <thead>
+                            <tr>
+                                <th>Application ID</th>
+                                <th>Applicant Name</th>
+                                <th>Service Type</th>
+                                <th>Date Applied</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($applications) > 0): ?>
+                                <?php foreach ($applications as $app): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($app['id']); ?></td>
+                                    <td><?php echo htmlspecialchars($app['applicant']); ?></td>
+                                    <td><?php echo htmlspecialchars($app['service']); ?></td>
+                                    <td><?php echo htmlspecialchars($app['date']); ?></td>
+                                    <td><span class="badge <?php echo $app['status_class']; ?>"><?php echo htmlspecialchars($app['status']); ?></span></td>
+                                    <td><a href="process-application.php?id=<?php echo urlencode($app['application_id']); ?>" class="btn btn-xs btn-info">Review</a></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="6">No applications found</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../../assets/js/main.js"></script>
+    <script>
+        function filterApplications(status) {
+            if (status === '') {
+                window.location.href = 'applications.php';
+            } else {
+                window.location.href = 'applications.php?status=' + encodeURIComponent(status);
+            }
+        }
+    </script>
+</body>
+</html>

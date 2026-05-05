@@ -1,0 +1,40 @@
+@startuml
+title Student Management System - UML Class Diagram
+
+class Student {
+  - studentId : int
+  - name : String
+  - email : String
+  - phone : String
+  + register()
+  + dropCourse()
+}
+
+class Course {
+  - courseId : int
+  - title : String
+  - credits : int
+  + addStudent()
+  + removeStudent()
+}
+
+class Instructor {
+  - instructorId : int
+  - name : String
+  - email : String
+  + assignCourse()
+}
+
+class Enrollment {
+  - enrollmentId : int
+  - date : Date
+  - grade : String
+  + assignGrade()
+}
+
+' Relationships
+Student "1" -- "0..*" Enrollment : enrolls
+Course "1" -- "0..*" Enrollment : contains
+Instructor "1" -- "1..*" Course : teaches
+
+@enduml
