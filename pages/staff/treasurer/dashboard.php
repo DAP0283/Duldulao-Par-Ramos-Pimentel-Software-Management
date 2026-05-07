@@ -18,6 +18,13 @@ if ($staff_role !== 'Barangay Treasurer') {
 
 require_once('../../../includes/db_config.php');
 require_once('../../../includes/auth_functions.php');
+require_once('../../../includes/news_functions.php');
+
+// Fetch Philippine News
+$news = getCachedPhilippineNews(5);
+if (empty($news)) {
+    $news = getFallbackNews(5);
+}
 
 $staff_id = $_SESSION['user_id'];
 $staff_name = $_SESSION['name'];
@@ -70,12 +77,12 @@ $recent_trans = sqlsrv_query($conn, $recent_trans_query);
                 <div class="navbar-content">
                     <h2>Welcome, <?php echo htmlspecialchars($staff_name); ?></h2>
                     <div class="user-info">
-                        <a href="../../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
                     </div>
                 </div>
             </header>
 
             <div class="dashboard-content">
+                <div class="dashboard-content-main">
                 <section class="stats-section">
                     <div class="stat-card stat-card-primary">
                         <h4>Transactions (30 days)</h4>
@@ -148,6 +155,11 @@ $recent_trans = sqlsrv_query($conn, $recent_trans_query);
                         </tbody>
                     </table>
                 </section>
+                </div>
+
+                <div class="dashboard-content-sidebar">
+                    <?php echo displayNewsHTML($news, 5); ?>
+                </div>
             </div>
         </main>
     </div>

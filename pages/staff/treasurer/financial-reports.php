@@ -37,7 +37,6 @@ require_once('../../../includes/db_config.php');
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Financial Reports</h2>
-                    <a href="../../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
                 </div>
             </header>
             <div class="dashboard-content">

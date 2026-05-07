@@ -156,7 +156,7 @@ if (isset($_SESSION['user_id'])) {
     </div>
 
     <footer>
-        <p>&copy; 2026, For Brgy. 7, Nasugbu, Batangas.</p>
+        <p>&copy; 2026, For Brgy. 7 Poblacion, Nasugbu, Batangas.</p>
     </footer>
 </body>
 </html>

@@ -6,6 +6,14 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'staff' || $_SESS
 }
 require_once('../../../includes/db_config.php');
 require_once('../../../includes/auth_functions.php');
+require_once('../../../includes/news_functions.php');
+
+// Fetch Philippine News
+$news = getCachedPhilippineNews(5);
+if (empty($news)) {
+    $news = getFallbackNews(5);
+}
+
 $staff_name = $_SESSION['name'];
 $pending_count = 0;
 $in_progress_count = 0;
@@ -13,11 +21,13 @@ $completed_count = 0;
 $total_clients = 0;
 $messages_count = 0;
 
+
 $pending_result = sqlsrv_query($conn, "SELECT COUNT(*) as Count FROM Applications WHERE Status = 'Pending'");
 if ($pending_result !== false) {
     $row = sqlsrv_fetch_array($pending_result, SQLSRV_FETCH_ASSOC);
     $pending_count = $row['Count'] ?? 0;
 }
+
 
 $clients_result = sqlsrv_query($conn, "SELECT COUNT(*) as Count FROM Clients");
 if ($clients_result !== false) {
@@ -63,6 +73,7 @@ if ($messages_result !== false) {
                 </div>
             </header>
             <div class="dashboard-content">
+                <div class="dashboard-content-main">
                 <section class="stats-section">
                     <div class="stat-card stat-card-primary">
                         <h4>Pending Applications</h4>
@@ -88,6 +99,11 @@ if ($messages_result !== false) {
                         <a href="messages.php" class="btn btn-secondary">Messages</a>
                     </div>
                 </section>
+                </div>
+
+                <div class="dashboard-content-sidebar">
+                    <?php echo displayNewsHTML($news, 5); ?>
+                </div>
             </div>
         </main>
     </div>

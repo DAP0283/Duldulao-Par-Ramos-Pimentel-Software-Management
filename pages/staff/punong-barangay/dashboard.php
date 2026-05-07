@@ -21,6 +21,13 @@ if ($staff_role !== 'Punong Barangay') {
 // Include database functions
 require_once('../../../includes/db_config.php');
 require_once('../../../includes/auth_functions.php');
+require_once('../../../includes/news_functions.php');
+
+// Fetch Philippine News
+$news = getCachedPhilippineNews(5);
+if (empty($news)) {
+    $news = getFallbackNews(5);
+}
 
 // Get staff information from session
 $staff_id = $_SESSION['user_id'];
@@ -96,6 +103,7 @@ $recent_apps = sqlsrv_query($conn, $recent_apps_query);
             </header>
 
             <div class="dashboard-content">
+                <div class="dashboard-content-main">
                 <!-- Stats Section -->
                 <section class="stats-section">
                     <div class="stat-card stat-card-primary">
@@ -175,6 +183,11 @@ $recent_apps = sqlsrv_query($conn, $recent_apps_query);
                     </table>
                     <p><a href="applications.php">View all applications →</a></p>
                 </section>
+                </div>
+
+                <div class="dashboard-content-sidebar">
+                    <?php echo displayNewsHTML($news, 5); ?>
+                </div>
             </div>
         </main>
     </div>

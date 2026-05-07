@@ -105,13 +105,14 @@ $pending_apps = sqlsrv_query($conn, $pending_apps_query);
             <nav class="sidebar-nav">
                 <ul>
                     <li><a href="dashboard.php" class="active">Dashboard</a></li>
-                    <?php if (in_array($staff_role, ['Barangay Secretary', 'Barangay Treasurer', 'Punong Barangay'])): ?>
+                    <?php if (in_array($staff_role, ['Barangay Secretary', 'Barangay Treasurer', 'Punong Barangay', 'Sangguian Member'])): ?>
                     <li><a href="applications.php">Applications</a></li>
                     <?php endif; ?>
                     <?php if (in_array($staff_role, ['Barangay Secretary', 'Punong Barangay'])): ?>
                     <li><a href="clients.php">Clients</a></li>
                     <?php endif; ?>
                     <li><a href="messages.php">Messages</a></li>
+                    <li><a href="../../auth/2fa-setup.php">Security Settings</a></li>
                     <li><a href="../../auth/logout.php">Logout</a></li>
                 </ul>
             </nav>
@@ -123,7 +124,6 @@ $pending_apps = sqlsrv_query($conn, $pending_apps_query);
                 <div class="navbar-content">
                     <h2>Welcome, <?php echo htmlspecialchars($staff_name); ?></h2>
                     <div class="user-info">
-                        <a href="../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
                     </div>
                 </div>
             </header>
@@ -131,16 +131,21 @@ $pending_apps = sqlsrv_query($conn, $pending_apps_query);
             <div class="dashboard-content">
                 <!-- Stats Section -->
                 <section class="stats-section">
+                    <?php if (in_array($staff_role, ['Barangay Secretary', 'Barangay Treasurer', 'Punong Barangay', 'Sangguian Member'])): ?>
                     <div class="stat-card stat-card-primary">
                         <h4>Pending Applications</h4>
                         <p class="stat-number"><?php echo $pending_count; ?></p>
                         <a href="applications.php?status=pending">View</a>
                     </div>
+                    <?php endif; ?>
+                    <?php if (in_array($staff_role, ['Barangay Secretary', 'Punong Barangay'])): ?>
                     <div class="stat-card stat-card-info">
                         <h4>Total Clients</h4>
                         <p class="stat-number"><?php echo $total_clients; ?></p>
                         <a href="clients.php">View</a>
                     </div>
+                    <?php endif; ?>
+                    <?php if (in_array($staff_role, ['Barangay Secretary', 'Barangay Treasurer', 'Punong Barangay', 'Sangguian Member'])): ?>
                     <div class="stat-card stat-card-warning">
                         <h4>In Progress</h4>
                         <p class="stat-number"><?php echo $in_progress_count; ?></p>
@@ -151,19 +156,25 @@ $pending_apps = sqlsrv_query($conn, $pending_apps_query);
                         <p class="stat-number"><?php echo $completed_count; ?></p>
                         <a href="applications.php?status=completed">View</a>
                     </div>
+                    <?php endif; ?>
                 </section>
 
                 <!-- Quick Actions -->
                 <section class="staff-section">
                     <h3>Quick Actions</h3>
                     <div class="action-buttons">
+                        <?php if (in_array($staff_role, ['Barangay Secretary', 'Barangay Treasurer', 'Punong Barangay', 'Sangguian Member'])): ?>
                         <a href="applications.php" class="btn btn-primary">Review Applications</a>
+                        <?php endif; ?>
+                        <?php if (in_array($staff_role, ['Barangay Secretary', 'Punong Barangay'])): ?>
                         <a href="clients.php" class="btn btn-primary">View Clients</a>
+                        <?php endif; ?>
                         <a href="messages.php" class="btn btn-secondary">Messages</a>
                     </div>
                 </section>
 
                 <!-- Applications Needing Attention -->
+                <?php if (in_array($staff_role, ['Barangay Secretary', 'Punong Barangay'])): ?>
                 <section class="staff-section">
                     <h3>Applications Pending Review</h3>
                     <table class="staff-table">
@@ -205,16 +216,14 @@ $pending_apps = sqlsrv_query($conn, $pending_apps_query);
                     </table>
                     <p><a href="applications.php">View all applications →</a></p>
                 </section>
-
-                <!-- Announcements -->
+                <?php else: ?>
+                <?php if (in_array($staff_role, ['Barangay Treasurer', 'Sangguian Member'])): ?>
                 <section class="staff-section">
-                    <h3>Recent Announcements</h3>
-                    <div class="announcement-box">
-                        <h4>System Maintenance</h4>
-                        <p>System maintenance scheduled for March 10, 2026, 10:00 PM - 12:00 AM. The system will be temporarily unavailable.</p>
-                        <p class="text-muted">Posted on March 7, 2026</p>
-                    </div>
+                    <h3>Applications Summary</h3>
+                    <p>Manage your overview of pending applications. <a href="applications.php">View all applications →</a></p>
                 </section>
+                <?php endif; ?>
+                <?php endif; ?>
             </div>
         </main>
     </div>

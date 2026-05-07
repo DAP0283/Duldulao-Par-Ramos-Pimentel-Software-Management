@@ -5,7 +5,7 @@
  */
 
 // SQL Server Connection Details
-$serverName = "CTG-MSI";
+$serverName = "MSI\SQLEXPRESS";
 $connectionOptions = array(
     "Database" => "BarangayEServices",
     "TrustServerCertificate" => true,

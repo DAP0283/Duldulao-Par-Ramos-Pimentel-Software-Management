@@ -67,7 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_budget'])) {
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Budget Management</h2>
-                    <a href="../../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
                 </div>
             </header>
 

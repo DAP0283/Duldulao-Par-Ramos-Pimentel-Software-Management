@@ -39,7 +39,6 @@ $staff_name = $_SESSION['name'];
             <header class="top-navbar">
                 <div class="navbar-content">
                     <h2>Transactions</h2>
-                    <a href="../../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
                 </div>
             </header>
             <div class="dashboard-content">

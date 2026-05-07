@@ -7,6 +7,13 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
 }
 
 require_once('../../includes/db_config.php');
+require_once('../../includes/news_functions.php');
+
+// Fetch Philippine News
+$news = getCachedPhilippineNews(5);
+if (empty($news)) {
+    $news = getFallbackNews(5);
+}
 
 // Fetch Live Statistics from Schema
 $pending_count = 0;
@@ -64,6 +71,7 @@ $recent_apps = sqlsrv_query($conn, $recent_query);
             </header>
 
             <div class="dashboard-content">
+                <div class="dashboard-content-main">
                 <section class="stats-section">
                     <div class="stat-card stat-card-primary">
                         <div class="stat-icon">📋</div>
@@ -153,6 +161,11 @@ $recent_apps = sqlsrv_query($conn, $recent_query);
                         </a>
                     </div>
                 </section>
+                </div>
+
+                <div class="dashboard-content-sidebar">
+                    <?php echo displayNewsHTML($news, 5); ?>
+                </div>
             </div>
         </main>
     </div>

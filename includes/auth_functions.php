@@ -6,6 +6,326 @@
 require_once __DIR__ . '/db_config.php';
 
 /**
+ * Login Security Functions
+ */
+
+// Configuration for login security
+define('MAX_LOGIN_ATTEMPTS', 5);
+define('LOGIN_TIMEOUT_MINUTES', 2);
+define('ATTEMPTS_FILE', __DIR__ . '/../cache/login_attempts.json');
+
+/**
+ * Get normalized client IP address
+ */
+function getClientIp() {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+    if ($ip === '::1' || $ip === '0:0:0:0:0:0:0:1') {
+        return '127.0.0.1';
+    }
+
+    return $ip;
+}
+
+/**
+ * Check if IP is currently locked out due to too many failed attempts
+ */
+function isLoginLockedOut($ip) {
+    $attempts = loadLoginAttempts();
+
+    if (!isset($attempts[$ip])) {
+        return false;
+    }
+
+    $attemptData = $attempts[$ip];
+    $lockoutTime = strtotime($attemptData['lockout_until'] ?? 'now');
+
+    if (time() < $lockoutTime) {
+        return true;
+    }
+
+    // Lockout expired, reset attempts
+    unset($attempts[$ip]);
+    saveLoginAttempts($attempts);
+    return false;
+}
+
+/**
+ * Record a failed login attempt
+ */
+function recordFailedLoginAttempt($ip) {
+    $attempts = loadLoginAttempts();
+
+    if (!isset($attempts[$ip])) {
+        $attempts[$ip] = ['count' => 0, 'lockout_until' => null];
+    }
+
+    $attempts[$ip]['count']++;
+
+    // Lock out after MAX_LOGIN_ATTEMPTS
+    if ($attempts[$ip]['count'] >= MAX_LOGIN_ATTEMPTS) {
+        if (empty($attempts[$ip]['lockout_until'])) {
+            $attempts[$ip]['lockout_until'] = date('Y-m-d H:i:s', time() + (LOGIN_TIMEOUT_MINUTES * 60));
+        }
+    }
+
+    saveLoginAttempts($attempts);
+}
+
+/**
+ * Reset login attempts for successful login
+ */
+function resetLoginAttempts($ip) {
+    $attempts = loadLoginAttempts();
+    unset($attempts[$ip]);
+    saveLoginAttempts($attempts);
+}
+
+/**
+ * Get remaining lockout time in minutes
+ */
+function getRemainingLockoutTime($ip) {
+    $attempts = loadLoginAttempts();
+
+    if (!isset($attempts[$ip]) || !isset($attempts[$ip]['lockout_until'])) {
+        return 0;
+    }
+
+    $lockoutTime = strtotime($attempts[$ip]['lockout_until']);
+    $remaining = $lockoutTime - time();
+
+    return max(0, ceil($remaining / 60));
+}
+
+/**
+ * Get current failed login count for IP
+ */
+function getLoginAttemptCount($ip) {
+    $attempts = loadLoginAttempts();
+    return isset($attempts[$ip]['count']) ? intval($attempts[$ip]['count']) : 0;
+}
+
+/**
+ * Get remaining login attempts for IP
+ */
+function getRemainingLoginAttempts($ip) {
+    $failedCount = getLoginAttemptCount($ip);
+    $remaining = MAX_LOGIN_ATTEMPTS - $failedCount;
+    return max(0, $remaining);
+}
+
+/**
+ * Load login attempts from file
+ */
+function loadLoginAttempts() {
+    if (!file_exists(ATTEMPTS_FILE)) {
+        return [];
+    }
+
+    $data = json_decode(file_get_contents(ATTEMPTS_FILE), true);
+    return $data ?: [];
+}
+
+/**
+ * Save login attempts to file
+ */
+function saveLoginAttempts($attempts) {
+    $dir = dirname(ATTEMPTS_FILE);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+
+    $json = json_encode($attempts);
+    $result = file_put_contents(ATTEMPTS_FILE, $json, LOCK_EX);
+    if ($result === false) {
+        error_log('Failed to save login attempts to ' . ATTEMPTS_FILE . '.');
+    }
+}
+
+/**
+ * Google OAuth and Authenticator Functions
+ */
+
+/**
+ * Generate TOTP secret for a user
+ */
+function generateTOTPSecret() {
+    return bin2hex(random_bytes(20)); // 40 character hex string
+}
+
+/**
+ * Generate TOTP code from secret
+ */
+function generateTOTPCode($secret, $time = null) {
+    $time = $time ?: time();
+    $timeWindow = floor($time / 30); // 30 second windows
+
+    $secret = hex2bin($secret);
+    $timeWindow = pack('J', $timeWindow); // 64-bit big-endian
+
+    $hash = hash_hmac('sha1', $timeWindow, $secret, true);
+    $offset = ord($hash[19]) & 0x0F;
+
+    $code = (
+        ((ord($hash[$offset]) & 0x7F) << 24) |
+        ((ord($hash[$offset + 1]) & 0xFF) << 16) |
+        ((ord($hash[$offset + 2]) & 0xFF) << 8) |
+        (ord($hash[$offset + 3]) & 0xFF)
+    );
+
+    return str_pad($code % 1000000, 6, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Verify TOTP code
+ */
+function verifyTOTPCode($secret, $code, $window = 1) {
+    $time = time();
+
+    // Check current and adjacent time windows
+    for ($i = -$window; $i <= $window; $i++) {
+        $checkTime = $time + ($i * 30);
+        if (generateTOTPCode($secret, $checkTime) === $code) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Generate Google Authenticator URI
+ */
+function generateTOTPURI($secret, $accountName, $issuer = 'Barangay e-Services') {
+    $uri = 'otpauth://totp/' . urlencode($issuer) . ':' . urlencode($accountName) . '?secret=' . $secret . '&issuer=' . urlencode($issuer);
+    return $uri;
+}
+
+/**
+ * Store TOTP secret for user
+ */
+function storeTOTPSecret($userId, $userType, $secret) {
+    global $conn;
+
+    try {
+        $table = $userType === 'client' ? 'Clients' : 'Staff';
+        $idColumn = $userType === 'client' ? 'ClientID' : 'StaffID';
+
+        $tsql = "UPDATE $table SET TOTPSecret = ?, Is2FAEnabled = 1, UpdatedAt = GETDATE() WHERE $idColumn = ?";
+        $params = array($secret, $userId);
+        $stmt = sqlsrv_query($conn, $tsql, $params);
+
+        return $stmt !== false;
+    } catch(Exception $e) {
+        return false;
+    }
+}
+
+/**
+ * Get TOTP secret for user
+ */
+function getTOTPSecret($userId, $userType) {
+    global $conn;
+
+    try {
+        $table = $userType === 'client' ? 'Clients' : 'Staff';
+        $idColumn = $userType === 'client' ? 'ClientID' : 'StaffID';
+
+        $tsql = "SELECT TOTPSecret FROM $table WHERE $idColumn = ?";
+        $params = array($userId);
+        $stmt = sqlsrv_query($conn, $tsql, $params);
+
+        if ($stmt && sqlsrv_has_rows($stmt)) {
+            $result = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            return $result['TOTPSecret'];
+        }
+
+        return null;
+    } catch(Exception $e) {
+        return null;
+    }
+}
+
+/**
+ * Check if 2FA is enabled for user
+ */
+function is2FAEnabled($userId, $userType) {
+    global $conn;
+
+    try {
+        $table = $userType === 'client' ? 'Clients' : 'Staff';
+        $idColumn = $userType === 'client' ? 'ClientID' : 'StaffID';
+
+        $tsql = "SELECT Is2FAEnabled FROM $table WHERE $idColumn = ?";
+        $params = array($userId);
+        $stmt = sqlsrv_query($conn, $tsql, $params);
+
+        if ($stmt && sqlsrv_has_rows($stmt)) {
+            $result = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            return $result['Is2FAEnabled'] == 1;
+        }
+
+        return false;
+    } catch(Exception $e) {
+        return false;
+    }
+}
+
+/**
+ * Validate login with 2FA
+ */
+function validateLoginWith2FA($email, $password, $totpCode = null, $userType = 'client') {
+    // First check if account is locked out
+    $clientIP = getClientIp();
+
+    if (isLoginLockedOut($clientIP)) {
+        $remaining = getRemainingLockoutTime($clientIP);
+        return ['success' => false, 'message' => "Account temporarily locked due to too many failed attempts. Try again in $remaining minutes."];
+    }
+
+    // Validate credentials
+    $validateFunc = $userType === 'client' ? 'validateClientLogin' : 'validateStaffLogin';
+    $result = $validateFunc($email, $password);
+
+    if (!$result['success']) {
+        $originalMessage = $result['message'] ?? 'Invalid email or password';
+        recordFailedLoginAttempt($clientIP);
+
+        if (isLoginLockedOut($clientIP)) {
+            $remaining = getRemainingLockoutTime($clientIP);
+            return ['success' => false, 'message' => "Account temporarily locked due to too many failed attempts. Try again in $remaining minutes."];
+        }
+
+        $remaining = getRemainingLoginAttempts($clientIP);
+        return ['success' => false, 'message' => trim($originalMessage) . " ($remaining attempt(s) remaining)."];
+    }
+
+    // Check if 2FA is enabled
+    if (is2FAEnabled($result['user_id'], $userType)) {
+        if (empty($totpCode)) {
+            return ['success' => false, 'message' => '2FA code required', 'requires_2fa' => true, 'user_id' => $result['user_id']];
+        }
+
+        $secret = getTOTPSecret($result['user_id'], $userType);
+        if (!$secret || !verifyTOTPCode($secret, $totpCode)) {
+            recordFailedLoginAttempt($clientIP);
+
+            if (isLoginLockedOut($clientIP)) {
+                $remaining = getRemainingLockoutTime($clientIP);
+                return ['success' => false, 'message' => "Account temporarily locked due to too many failed attempts. Try again in $remaining minutes."];
+            }
+
+            $remaining = getRemainingLoginAttempts($clientIP);
+            return ['success' => false, 'message' => "Invalid 2FA code. $remaining attempt(s) remaining."];
+        }
+    }
+
+    // Success - reset attempts
+    resetLoginAttempts($clientIP);
+    return $result;
+}
+
+/**
  * Hash a password using bcrypt
  */
 function hashPassword($password) {
@@ -20,7 +340,7 @@ function verifyPassword($password, $hash) {
 }
 
 /**
- * Validate Client Login
+ * Validate Client Login (Legacy - use validateLoginWith2FA for new implementations)
  */
 function validateClientLogin($email, $password) {
     global $conn;
@@ -86,7 +406,7 @@ function validateAdminLogin($username, $password) {
 }
 
 /**
- * Validate Staff Login
+ * Validate Staff Login (Legacy - use validateLoginWith2FA for new implementations)
  */
 function validateStaffLogin($email, $password) {
     global $conn;

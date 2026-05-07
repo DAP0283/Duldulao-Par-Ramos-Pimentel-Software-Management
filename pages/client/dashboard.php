@@ -14,6 +14,13 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'client') {
 // Include database functions
 require_once('../../includes/db_config.php');
 require_once('../../includes/auth_functions.php');
+require_once('../../includes/news_functions.php');
+
+// Fetch Philippine News
+$news = getCachedPhilippineNews(5);
+if (empty($news)) {
+    $news = getFallbackNews(5);
+}
 
 // Get user information from session
 $user_id = $_SESSION['user_id'];
@@ -50,6 +57,7 @@ $recent_apps = getClientApplications($user_id);
                     <li><a href="dashboard.php" class="active">Dashboard</a></li>
                     <li><a href="my-applications.php">My Applications</a></li>
                     <li><a href="profile.php">My Profile</a></li>
+                    <li><a href="../../auth/2fa-setup.php">Security Settings</a></li>
                     <li><a href="../../auth/logout.php">Logout</a></li>
                 </ul>
             </nav>
@@ -67,8 +75,14 @@ $recent_apps = getClientApplications($user_id);
                 </div>
             </header>
 
+            <!-- Philippine News Section -->
+            <div class="news-wrapper">
+                <?php echo displayNewsHTML($news, 5); ?>
+            </div>
+
             <!-- Dashboard Content -->
             <div class="dashboard-content">
+                <div class="dashboard-content-main">
                 <section class="welcome-section">
                     <h3>Apply for Services</h3>
                     <p>Choose a service below to submit your application</p>
@@ -148,6 +162,10 @@ $recent_apps = getClientApplications($user_id);
                     <?php endif; ?>
                     <p><a href="my-applications.php">View all applications →</a></p>
                 </section>
+                </div>
+
+                <div class="dashboard-content-sidebar">
+                </div>
             </div>
         </main>
     </div>
