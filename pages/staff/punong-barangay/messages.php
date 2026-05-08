@@ -177,9 +177,9 @@ if ($staff_stmt !== false) {
                     </div>
                 <?php endif; ?>
 
-                <div style="margin-bottom: 20px; display: flex; gap: 10px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">
-                    <a href="?tab=inbox" class="btn <?php echo $tab === 'inbox' ? 'btn-primary' : 'btn-secondary'; ?>" style="text-decoration: none;">Inbox</a>
-                    <a href="?tab=compose" class="btn <?php echo $tab === 'compose' ? 'btn-primary' : 'btn-secondary'; ?>" style="text-decoration: none;">Compose Message</a>
+                <div class="message-tabs">
+                    <a href="?tab=inbox" class="btn <?php echo $tab === 'inbox' ? 'btn-primary' : 'btn-secondary'; ?>">Inbox</a>
+                    <a href="?tab=compose" class="btn <?php echo $tab === 'compose' ? 'btn-primary' : 'btn-secondary'; ?>">Compose Message</a>
                 </div>
 
                 <?php if ($tab === 'compose'): ?>

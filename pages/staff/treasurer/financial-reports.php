@@ -124,7 +124,7 @@ if (!empty($start_date) && !empty($end_date)) {
                         ?>
                             <tr>
                                 <td>#PAY-<?php echo str_pad($t['PaymentID'],4,'0',STR_PAD_LEFT); ?></td>
-                                <td><a href="../view-application.php?id=<?php echo urlencode($t['ApplicationID']); ?>">#APP-<?php echo str_pad($t['ApplicationID'],5,'0',STR_PAD_LEFT); ?></a></td>
+                                <td><a href="view-application.php?id=<?php echo urlencode($t['ApplicationID']); ?>">#APP-<?php echo str_pad($t['ApplicationID'],5,'0',STR_PAD_LEFT); ?></a></td>
                                 <td><?php echo htmlspecialchars($t['ClientID'] ?? ''); ?></td>
                                 <td><?php echo htmlspecialchars($t['Method']); ?></td>
                                 <td>₱<?php echo number_format($t['Amount'],2); ?></td>

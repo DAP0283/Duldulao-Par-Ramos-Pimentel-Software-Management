@@ -57,9 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <form method="POST" action="">
                 <div class="form-group">
-                    <label for="username">Username</label>
+                    <label for="username">Username or Email</label>
                     <input type="text" id="username" name="username" required 
-                           placeholder="Enter your username" class="form-control">
+                           placeholder="Enter your username or email" class="form-control">
                 </div>
 
                 <div class="form-group">

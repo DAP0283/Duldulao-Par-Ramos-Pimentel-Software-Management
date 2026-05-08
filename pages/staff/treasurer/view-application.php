@@ -1,14 +1,14 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'staff') {
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'staff' || $_SESSION['role'] !== 'Barangay Treasurer') {
     header('Location: ../../auth/staff-login.php');
     exit();
 }
 
-$staff_name = $_SESSION['name'] ?? 'Staff';
-$staff_role = $_SESSION['role'] ?? '';
-require_once('../../includes/db_config.php');
-require_once('../../includes/auth_functions.php');
+$staff_name = $_SESSION['name'] ?? 'Treasurer';
+$staff_role = $_SESSION['role'] ?? 'Barangay Treasurer';
+require_once('../../../includes/db_config.php');
+require_once('../../../includes/auth_functions.php');
 
 $application_id = intval($_GET['id'] ?? 0);
 if ($application_id <= 0) {
@@ -16,39 +16,17 @@ if ($application_id <= 0) {
     exit();
 }
 
-// Handle processing notes update from staff
 $error_message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['processing_notes'])) {
-    // If this POST includes a status change request, handle that first
-    if (isset($_POST['change_status']) && $_POST['change_status'] === 'to_processing') {
-        // Only allow Sanggunian Members to set to Processing
-        $staff_role = $_SESSION['role'] ?? '';
-        if ($staff_role === 'Sanggunian Member') {
-            $notes_input = trim($_POST['processing_notes'] ?? '');
-            $res = updateApplicationStatus($application_id, 'Processing', $notes_input, $_SESSION['user_id'] ?? null);
-            if (is_array($res) && ($res['success'] ?? false)) {
-                header('Location: view-application.php?id=' . urlencode($application_id));
-                exit();
-            } else {
-                $error_message = 'Failed to change status to Processing.';
-            }
-        } else {
-            $error_message = 'You are not authorized to change this status.';
-        }
+    $notes_input = trim($_POST['processing_notes'] ?? '');
+    $update_query = "UPDATE Applications SET ProcessingNotes = ? WHERE ApplicationID = ?";
+    $update_params = array($notes_input, $application_id);
+    $update_stmt = sqlsrv_query($conn, $update_query, $update_params);
+    if ($update_stmt === false) {
+        $error_message = 'Failed to update notes.';
     } else {
-        // Regular notes update
-        $notes_input = trim($_POST['processing_notes']);
-        $update_query = "UPDATE Applications SET ProcessingNotes = ? WHERE ApplicationID = ?";
-        $update_params = array($notes_input, $application_id);
-        $update_stmt = sqlsrv_query($conn, $update_query, $update_params);
-        if ($update_stmt === false) {
-            $err = sqlsrv_errors();
-            $error_message = 'Failed to update notes.';
-        } else {
-            // reload to reflect changes
-            header('Location: view-application.php?id=' . urlencode($application_id));
-            exit();
-        }
+        header('Location: view-application.php?id=' . urlencode($application_id));
+        exit();
     }
 }
 
@@ -84,9 +62,6 @@ if ($application && !empty($application['ApplicationData'])) {
     $app_data = json_decode($application['ApplicationData'], true) ?: [];
 }
 
-$processing_notes_text = trim($application['ProcessingNotes'] ?? '');
-$has_processing_notes = $processing_notes_text !== '';
-
 $status = $application['Status'] ?? 'Unknown';
 $status_class = 'badge-secondary';
 if ($status === 'Pending') {
@@ -106,22 +81,25 @@ $display_id = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Application - Barangay e-Services</title>
-    <link rel="stylesheet" href="../../assets/css/style.css">
+    <title>View Application - Treasurer Portal</title>
+    <link rel="stylesheet" href="../../../assets/css/style.css">
 </head>
 <body>
     <div class="dashboard-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h3>Staff Portal</h3>
+                <h3>Treasurer Portal</h3>
                 <p class="role-badge"><?php echo htmlspecialchars($staff_role); ?></p>
             </div>
             <nav class="sidebar-nav">
                 <ul>
                     <li><a href="dashboard.php">Dashboard</a></li>
+                    <li><a href="transactions.php">Transactions</a></li>
+                    <li><a href="financial-reports.php">Financial Reports</a></li>
+                    <li><a href="budget-management.php">Budget Management</a></li>
                     <li><a href="applications.php">Applications</a></li>
                     <li><a href="messages.php">Messages</a></li>
-                    <li><a href="../../auth/logout.php">Logout</a></li>
+                    <li><a href="../../../auth/logout.php">Logout</a></li>
                 </ul>
             </nav>
         </aside>
@@ -134,7 +112,7 @@ $display_id = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
                     </div>
                     <div class="user-info">
                         <span>Welcome, <?php echo htmlspecialchars($staff_name); ?></span>
-                        <a href="../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
+                        <a href="../../../auth/logout.php" class="btn btn-sm btn-danger">Logout</a>
                     </div>
                 </div>
             </header>
@@ -169,26 +147,19 @@ $display_id = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
                             </div>
                             <div class="detail-row">
                                 <label>Status:</label>
-                                <span class="status-wrapper"><span class="badge <?php echo htmlspecialchars($status_class); ?>"><?php echo htmlspecialchars($status); ?></span></span>
+                                <span class="badge <?php echo htmlspecialchars($status_class); ?>"><?php echo htmlspecialchars($status); ?></span>
                             </div>
                             <div class="detail-row">
                                 <label>Processing Notes:</label>
-                                <?php if ($has_processing_notes): ?>
-                                    <div class="announcement-box"><?php echo nl2br(htmlspecialchars($processing_notes_text)); ?></div>
-                                <?php else: ?>
-                                    <span class="text-muted">No processing notes yet.</span>
-                                <?php endif; ?>
+                                <div class="announcement-box"><?php echo nl2br(htmlspecialchars($application['ProcessingNotes'] ?? '')); ?></div>
                             </div>
 
                             <div class="detail-row">
                                 <form method="post" action="view-application.php?id=<?php echo urlencode($application_id); ?>">
                                     <label for="processing_notes">Edit Processing Notes (visible to staff):</label>
-                                    <textarea id="processing_notes" name="processing_notes" rows="6" style="width:100%;"><?php echo htmlspecialchars($processing_notes_text); ?></textarea>
+                                    <textarea id="processing_notes" name="processing_notes" rows="6" style="width:100%;"><?php echo htmlspecialchars($application['ProcessingNotes'] ?? ''); ?></textarea>
                                     <div style="margin-top:8px;">
                                         <button type="submit" class="btn btn-primary">Save Notes</button>
-                                        <?php if ($staff_role === 'Sanggunian Member' && $status === 'Pending'): ?>
-                                            <button type="submit" name="change_status" value="to_processing" class="btn btn-warning" style="margin-left:8px;">Mark as Processing</button>
-                                        <?php endif; ?>
                                     </div>
                                 </form>
                             </div>

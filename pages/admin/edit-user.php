@@ -4,8 +4,19 @@ require_once('../../includes/db_config.php');
 
 $client_id = $_GET['id'] ?? null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $sql = "UPDATE Clients SET FirstName = ?, LastName = ?, Email = ?, PhoneNumber = ?, Address = ?, Gender = ?, CivilStatus = ?, Occupation = ?, UpdatedAt = GETDATE() WHERE ClientID = ?";
-    $params = array($_POST['fname'], $_POST['lname'], $_POST['email'], $_POST['phone'], $_POST['address'], $_POST['gender'], $_POST['civil'], $_POST['job'], $client_id);
+    $sql = "UPDATE Clients SET FirstName = ?, MiddleName = ?, LastName = ?, Email = ?, PhoneNumber = ?, Address = ?, Gender = ?, CivilStatus = ?, Occupation = ?, UpdatedAt = GETDATE() WHERE ClientID = ?";
+    $params = array(
+        $_POST['fname'],
+        $_POST['mname'],
+        $_POST['lname'],
+        $_POST['email'],
+        $_POST['phone'],
+        $_POST['address'],
+        $_POST['gender'],
+        $_POST['civil'],
+        $_POST['job'],
+        $client_id
+    );
     sqlsrv_query($conn, $sql, $params);
     header("Location: users.php?msg=Resident profile fully updated."); exit();
 }
@@ -47,7 +58,8 @@ $u = sqlsrv_fetch_array($res, SQLSRV_FETCH_ASSOC);
                 <form method="POST" class="form-container">
                     <div class="form-row">
                         <div class="form-group"><label>First Name</label><input type="text" name="fname" value="<?php echo htmlspecialchars($u['FirstName']); ?>" class="form-control"></div>
-                        <div class="form-group"><label>Last Name</label><input type="text" name="lname" value="<?php echo htmlspecialchars($u['LastName']); ?>" class="form-control"></div>
+                        <div class="form-group"><label>Middle Name</label><input type="text" name="mname" value="<?php echo htmlspecialchars($u['MiddleName']); ?>" class="form-control"></div>
+                        <div class="form-group"><label></label>Last Name</label><input type="text" name="lname" value="<?php echo htmlspecialchars($u['LastName']); ?>" class="form-control"></div>
                     </div>
                     <div class="form-group"><label>Email Address</label><input type="email" name="email" value="<?php echo htmlspecialchars($u['Email']); ?>" class="form-control"></div>
                     

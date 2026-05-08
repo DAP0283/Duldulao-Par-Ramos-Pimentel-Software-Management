@@ -453,13 +453,13 @@ function validateClientLogin($email, $password) {
 /**
  * Validate Admin Login
  */
-function validateAdminLogin($username, $password) {
+function validateAdminLogin($usernameOrEmail, $password) {
     global $conn;
     
     try {
-        $tsql = "EXEC sp_ValidateAdminLogin @Username = ?, @Password = ?";
-        $params = array($username, $password);
-        $stmt = sqlsrv_query($conn, $tsql, $params);
+        $sql = "SELECT AdminID, Username, FullName FROM Admins WHERE (Username = ? OR Email = ?) AND Password = ?";
+        $params = array($usernameOrEmail, $usernameOrEmail, $password);
+        $stmt = sqlsrv_query($conn, $sql, $params);
         
         if ($stmt === false) {
             return ['success' => false, 'message' => 'Database error: ' . print_r(sqlsrv_errors(), true)];
@@ -476,7 +476,7 @@ function validateAdminLogin($username, $password) {
                 'user_type' => 'admin'
             ];
         } else {
-            return ['success' => false, 'message' => 'Invalid username or password'];
+            return ['success' => false, 'message' => 'Invalid username/email or password'];
         }
     } catch(Exception $e) {
         return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];

@@ -22,7 +22,44 @@ $sql = "SELECT a.*, c.* FROM Applications a JOIN Clients c ON a.ClientID = c.Cli
 $stmt = sqlsrv_query($conn, $sql, array($app_id));
 $app = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
 
-$created_date = $app['CreatedAt'] instanceof DateTime ? $app['CreatedAt']->format('M d, Y | h:i A') : 'N/A'; //
+function renderApplicationField($label, $value) {
+    return '<div class="detail-row"><label>' . htmlspecialchars($label) . ':</label><span>' . htmlspecialchars($value) . '</span></div>';
+}
+
+function renderApplicationData($data, $level = 0) {
+    $html = '';
+    if (is_array($data)) {
+        foreach ($data as $key => $value) {
+            $label = is_int($key) ? "Item {$key}" : ucwords(str_replace('_', ' ', $key));
+            if (is_array($value)) {
+                $html .= '<div class="detail-row nested" style="margin-left:' . (15 * $level) . 'px;">';
+                $html .= '<label>' . htmlspecialchars($label) . ':</label>';
+                $html .= '</div>';
+                $html .= renderApplicationData($value, $level + 1);
+            } else {
+                $html .= '<div class="detail-row nested" style="margin-left:' . (15 * $level) . 'px;">';
+                $html .= '<label>' . htmlspecialchars($label) . ':</label><span>' . htmlspecialchars((string)$value) . '</span>';
+                $html .= '</div>';
+            }
+        }
+    } else {
+        $html .= '<pre style="background: #f4f4f4; padding: 10px; font-size: 12px; white-space: pre-wrap; word-break: break-word;">' . htmlspecialchars((string)$data) . '</pre>';
+    }
+    return $html;
+}
+
+$app_data = [];
+$raw_application_data = $app['ApplicationData'] ?? '';
+if (!empty($raw_application_data)) {
+    $decoded = json_decode($raw_application_data, true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        $app_data = $decoded;
+    } else {
+        $app_data = $raw_application_data;
+    }
+}
+
+$created_date = $app['CreatedAt'] instanceof DateTime ? $app['CreatedAt']->format('M d, Y | h:i A') : 'N/A';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,8 +111,16 @@ $created_date = $app['CreatedAt'] instanceof DateTime ? $app['CreatedAt']->forma
                         <p><strong>Submission Date:</strong> <?php echo $created_date; ?></p>
                         <p><strong>Current Status:</strong> <span class="badge"><?php echo htmlspecialchars($app['Status']); ?></span></p>
                         <hr>
-                        <p><strong>Raw Application Data:</strong></p>
-                        <pre style="background: #f4f4f4; padding: 10px; font-size: 12px;"><?php echo htmlspecialchars($app['ApplicationData'] ?? 'No extra data provided.'); ?></pre>
+                        <p><strong>Form Submission Data:</strong></p>
+                        <?php if (is_array($app_data) && count($app_data) > 0): ?>
+                            <div class="info-card" style="background: #fafafa; border: 1px solid rgba(15, 23, 42, 0.08);">
+                                <?php echo renderApplicationData($app_data); ?>
+                            </div>
+                        <?php elseif (is_string($app_data) && $app_data !== ''): ?>
+                            <pre style="background: #f4f4f4; padding: 10px; font-size: 12px; white-space: pre-wrap; word-break: break-word;"><?php echo htmlspecialchars($app_data); ?></pre>
+                        <?php else: ?>
+                            <p>No extra data provided.</p>
+                        <?php endif; ?>
                     </div>
                 </div>
 

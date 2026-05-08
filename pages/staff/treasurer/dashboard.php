@@ -100,7 +100,7 @@ $pending_approvals = 0;
                             ?>
                             <tr>
                                 <td>#PAY-<?php echo str_pad($row['PaymentID'], 4, '0', STR_PAD_LEFT); ?></td>
-                                <td><a href="../view-application.php?id=<?php echo urlencode($row['ApplicationID']); ?>">#APP-<?php echo str_pad($row['ApplicationID'],5,'0',STR_PAD_LEFT); ?></a></td>
+                                <td><a href="view-application.php?id=<?php echo urlencode($row['ApplicationID']); ?>">#APP-<?php echo str_pad($row['ApplicationID'],5,'0',STR_PAD_LEFT); ?></a></td>
                                 <td><?php echo htmlspecialchars($row['Method']); ?></td>
                                 <td>₱<?php echo number_format($row['Amount'], 2); ?></td>
                                 <td><?php echo htmlspecialchars($row['TransactionID']); ?></td>

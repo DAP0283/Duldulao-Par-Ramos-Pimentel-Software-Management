@@ -24,7 +24,7 @@ $total_users = 0;
 $res_p = sqlsrv_query($conn, "SELECT COUNT(*) as c FROM Applications WHERE Status = 'Pending'");
 if($res_p) { $row = sqlsrv_fetch_array($res_p, SQLSRV_FETCH_ASSOC); $pending_count = $row['c']; }
 
-$res_c = sqlsrv_query($conn, "SELECT COUNT(*) as c FROM Applications WHERE Status IN ('Approved', 'Completed')");
+$res_c = sqlsrv_query($conn, "SELECT COUNT(*) as c FROM Applications WHERE Status = 'Approved'");
 if($res_c) { $row = sqlsrv_fetch_array($res_c, SQLSRV_FETCH_ASSOC); $completed_count = $row['c']; }
 
 $res_u = sqlsrv_query($conn, "SELECT COUNT(*) as c FROM Clients WHERE IsActive = 1");
@@ -81,9 +81,9 @@ $recent_apps = sqlsrv_query($conn, $recent_query);
                     </div>
                     <div class="stat-card stat-card-success">
                         <div class="stat-icon">✅</div>
-                        <h4>Completed Tasks</h4>
+                        <h4>Accepted Applications</h4>
                         <p class="stat-number"><?php echo $completed_count; ?></p>
-                        <a href="applications.php?status=Completed" class="stat-link">View History →</a>
+                        <a href="applications.php?status=Approved" class="stat-link">View Accepted →</a>
                     </div>
                     <div class="stat-card stat-card-info">
                         <div class="stat-icon">👥</div>

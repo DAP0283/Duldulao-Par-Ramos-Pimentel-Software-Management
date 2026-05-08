@@ -95,6 +95,10 @@ if ($stmt === false) {
                                     <a href="user-actions.php?action=activate&id=<?php echo $row['ClientID']; ?>" 
                                        class="btn btn-xs btn-success">Activate</a>
                                 <?php endif; ?>
+                                <a href="user-actions.php?action=remove&id=<?php echo $row['ClientID']; ?>" 
+                                   class="btn btn-xs btn-danger" 
+                                   onclick="return confirm('WARNING: This will permanently delete the user and ALL their applications. This action cannot be undone. Are you sure?')" 
+                                   style="background-color: #dc3545; border-color: #dc3545;">Remove</a>
                             </td>
                         </tr>
                         <?php } ?>
