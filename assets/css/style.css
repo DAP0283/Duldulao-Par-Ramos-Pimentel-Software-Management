@@ -1053,13 +1053,19 @@ label {
 .detail-row .status-wrapper {
     display: inline-flex;
     justify-content: flex-end;
+    /* Added width fit-content to prevent stretching */
+    width: fit-content; 
 }
 
 .detail-row .status-wrapper .badge {
-    display: inline-flex;
-    white-space: nowrap;
-    min-width: auto;
-    padding: 0.35rem 0.75rem;
+    display: inline-flex !important;
+    width: auto !important; /* Prevents the "footlong" stretching */
+    padding: 6px 16px !important; /* Vertical and Horizontal padding */
+    border-radius: 9999px !important; /* Forces the semi-circle ends */
+    white-space: nowrap !important;
+    line-height: 1 !important;
+    justify-content: center !important;
+    align-items: center !important;
 }
 
 /* ===================================
@@ -1377,6 +1383,23 @@ label {
     .dashboard-content {
         max-width: 100%;
     }
+}
+
+/* Fix for the 'footlong' status badge */
+.detail-row span.badge {
+    flex: none !important;      /* Stops the row from stretching the badge */
+    width: fit-content !important; /* Forces the width to match the text */
+    margin-left: auto;          /* Pushes the pill to the right side */
+    display: inline-flex !important; 
+    border-radius: 9999px !important; /* Ensures perfect pill shape */
+    padding: 0.5rem 1.5rem !important; /* Adds nice spacing inside the pill */
+}
+
+/* Ensure the wrapper doesn't force a stretch */
+.detail-row .status-wrapper {
+    display: flex !important;
+    justify-content: flex-end !important;
+    width: 100%;
 }
 
 
