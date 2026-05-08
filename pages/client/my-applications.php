@@ -60,6 +60,7 @@ if (isset($_GET['success']) && $_GET['success'] == '1' && isset($_GET['applicati
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="my-applications.php" class="active">My Applications</a></li>
                     <li><a href="profile.php">My Profile</a></li>
+                    <li><a href="../../auth/2fa-setup.php">Security Settings</a></li>
                     <li><a href="../../auth/logout.php">Logout</a></li>
                 </ul>
             </nav>

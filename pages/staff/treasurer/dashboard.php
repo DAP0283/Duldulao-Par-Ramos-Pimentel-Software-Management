@@ -19,6 +19,7 @@ if ($staff_role !== 'Barangay Treasurer') {
 require_once('../../../includes/db_config.php');
 require_once('../../../includes/auth_functions.php');
 require_once('../../../includes/news_functions.php');
+require_once('../../../includes/db_functions_enhanced.php');
 
 // Fetch Philippine News
 $news = getCachedPhilippineNews(5);
@@ -29,20 +30,10 @@ if (empty($news)) {
 $staff_id = $_SESSION['user_id'];
 $staff_name = $_SESSION['name'];
 
-$total_transactions = 0;
+$recent_payments = getRecentPayments(30);
+$total_transactions = is_array($recent_payments) ? count($recent_payments) : 0;
+// pending_approvals left as 0 unless additional logic added
 $pending_approvals = 0;
-
-$trans_result = sqlsrv_query($conn, "SELECT COUNT(*) as Count FROM Transactions WHERE CreatedAt >= DATEADD(MONTH, -1, GETDATE())");
-if ($trans_result !== false) {
-    $row = sqlsrv_fetch_array($trans_result, SQLSRV_FETCH_ASSOC);
-    $total_transactions = $row['Count'] ?? 0;
-}
-
-$recent_trans_query = "SELECT TOP 5 TransactionID, Description, Amount, TransactionType, Status, CreatedAt 
-                       FROM Transactions 
-                       WHERE CreatedAt >= DATEADD(MONTH, -1, GETDATE())
-                       ORDER BY CreatedAt DESC";
-$recent_trans = sqlsrv_query($conn, $recent_trans_query);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -83,84 +74,54 @@ $recent_trans = sqlsrv_query($conn, $recent_trans_query);
 
             <div class="dashboard-content">
                 <div class="dashboard-content-main">
-                <section class="stats-section">
-                    <div class="stat-card stat-card-primary">
-                        <h4>Transactions (30 days)</h4>
-                        <p class="stat-number"><?php echo $total_transactions; ?></p>
-                        <a href="transactions.php">View All</a>
-                    </div>
-                    <div class="stat-card stat-card-info">
-                        <h4>Pending Remarks</h4>
-                        <p class="stat-number"><?php echo $pending_approvals; ?></p>
-                        <a href="transactions.php?status=pending">Review</a>
-                    </div>
-                    <div class="stat-card stat-card-success">
-                        <h4>Financial Reports</h4>
-                        <p class="stat-number">Monthly</p>
-                        <a href="financial-reports.php">Generate</a>
-                    </div>
-                </section>
 
                 <section class="staff-section">
-                    <h3>Quick Actions</h3>
-                    <div class="action-buttons">
-                        <a href="transactions.php" class="btn btn-primary">Record Transaction</a>
-                        <a href="financial-reports.php" class="btn btn-primary">View Reports</a>
-                        <a href="budget-management.php" class="btn btn-secondary">Manage Budget</a>
-                    </div>
-                </section>
-
-                <section class="staff-section">
-                    <h3>Recent Transactions</h3>
+                    <h3>Recent Payments</h3>
                     <table class="staff-table">
                         <thead>
                             <tr>
-                                <th>Transaction ID</th>
-                                <th>Description</th>
-                                <th>Type</th>
+                                <th>Payment ID</th>
+                                <th>Application</th>
+                                <th>Method</th>
                                 <th>Amount</th>
-                                <th>Status</th>
+                                <th>Transaction</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php 
-                            if ($recent_trans !== false) {
-                                $found = false;
-                                while ($row = sqlsrv_fetch_array($recent_trans, SQLSRV_FETCH_ASSOC)) {
-                                    $found = true;
-                                    $status_badge = 'badge-warning';
-                                    if ($row['Status'] === 'Approved') {
-                                        $status_badge = 'badge-success';
-                                    } elseif ($row['Status'] === 'Rejected') {
-                                        $status_badge = 'badge-danger';
-                                    }
+                            <?php
+                            if (is_array($recent_payments)) {
+                                if (count($recent_payments) === 0) {
+                                    echo '<tr><td colspan="6">No payments found</td></tr>';
+                                } else {
+                                    foreach ($recent_payments as $row) {
+                                        $created = $row['CreatedAt'];
+                                        $date = ($created instanceof DateTime) ? $created->format('Y-m-d') : date('Y-m-d', strtotime($created));
                             ?>
                             <tr>
-                                <td>#TRX-<?php echo str_pad($row['TransactionID'], 3, '0', STR_PAD_LEFT); ?></td>
-                                <td><?php echo htmlspecialchars($row['Description']); ?></td>
-                                <td><?php echo htmlspecialchars($row['TransactionType']); ?></td>
+                                <td>#PAY-<?php echo str_pad($row['PaymentID'], 4, '0', STR_PAD_LEFT); ?></td>
+                                <td><a href="../view-application.php?id=<?php echo urlencode($row['ApplicationID']); ?>">#APP-<?php echo str_pad($row['ApplicationID'],5,'0',STR_PAD_LEFT); ?></a></td>
+                                <td><?php echo htmlspecialchars($row['Method']); ?></td>
                                 <td>₱<?php echo number_format($row['Amount'], 2); ?></td>
-                                <td><span class="badge <?php echo $status_badge; ?>"><?php echo htmlspecialchars($row['Status']); ?></span></td>
-                                <td><?php echo ($row['CreatedAt'] instanceof DateTime) ? $row['CreatedAt']->format('Y-m-d') : date('Y-m-d', strtotime($row['CreatedAt'])); ?></td>
+                                <td><?php echo htmlspecialchars($row['TransactionID']); ?></td>
+                                <td><?php echo htmlspecialchars($date); ?></td>
                             </tr>
                             <?php }
-                                if (!$found) {
-                                    echo '<tr><td colspan="6">No transactions found</td></tr>';
                                 }
                             } else {
-                                echo '<tr><td colspan="6">Unable to load transactions</td></tr>';
+                                echo '<tr><td colspan="6">Unable to load payments</td></tr>';
                             }
                             ?>
                         </tbody>
                     </table>
                 </section>
-                </div>
+
+                </div> <!-- dashboard-content-main -->
 
                 <div class="dashboard-content-sidebar">
                     <?php echo displayNewsHTML($news, 5); ?>
                 </div>
-            </div>
+            </div> <!-- dashboard-content -->
         </main>
     </div>
 

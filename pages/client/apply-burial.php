@@ -73,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="my-applications.php">My Applications</a></li>
                     <li><a href="profile.php">My Profile</a></li>
+                    <li><a href="../../auth/2fa-setup.php">Security Settings</a></li>
                     <li><a href="../../auth/logout.php">Logout</a></li>
                 </ul>
             </nav>

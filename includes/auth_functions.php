@@ -150,7 +150,8 @@ function saveLoginAttempts($attempts) {
  * Generate TOTP secret for a user
  */
 function generateTOTPSecret() {
-    return bin2hex(random_bytes(20)); // 40 character hex string
+    $bytes = random_bytes(20); // 160 bits
+    return base32_encode($bytes); // Base32 encoded secret for Google Authenticator
 }
 
 /**
@@ -159,11 +160,22 @@ function generateTOTPSecret() {
 function generateTOTPCode($secret, $time = null) {
     $time = $time ?: time();
     $timeWindow = floor($time / 30); // 30 second windows
+    // Support two secret formats:
+    // - Hex (legacy): 40 hex chars -> hex2bin
+    // - Base32 (new): decode base32
+    if (preg_match('/^[0-9a-fA-F]+$/', $secret)) {
+        // legacy hex secret
+        $secret = hex2bin($secret);
+    } else {
+        $secret = base32_decode($secret);
+    }
 
-    $secret = hex2bin($secret);
-    $timeWindow = pack('J', $timeWindow); // 64-bit big-endian
+    // Pack time window as 64-bit big-endian (portable)
+    $high = ($timeWindow >> 32) & 0xFFFFFFFF;
+    $low = $timeWindow & 0xFFFFFFFF;
+    $timeBytes = pack('N2', $high, $low);
 
-    $hash = hash_hmac('sha1', $timeWindow, $secret, true);
+    $hash = hash_hmac('sha1', $timeBytes, $secret, true);
     $offset = ord($hash[19]) & 0x0F;
 
     $code = (
@@ -197,8 +209,74 @@ function verifyTOTPCode($secret, $code, $window = 1) {
  * Generate Google Authenticator URI
  */
 function generateTOTPURI($secret, $accountName, $issuer = 'Barangay e-Services') {
-    $uri = 'otpauth://totp/' . urlencode($issuer) . ':' . urlencode($accountName) . '?secret=' . $secret . '&issuer=' . urlencode($issuer);
+    // Ensure secret is in Base32 (generateTOTPSecret returns Base32)
+    $cleanSecret = strtoupper(str_replace('=', '', $secret));
+    $uri = 'otpauth://totp/' . urlencode($issuer) . ':' . urlencode($accountName) . '?secret=' . $cleanSecret . '&issuer=' . urlencode($issuer) . '&algorithm=SHA1&digits=6&period=30';
     return $uri;
+}
+
+/**
+ * Encode binary data to Base32 (RFC 4648) without padding
+ */
+function base32_encode($data) {
+    if ($data === '') return '';
+    $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    $output = '';
+    $buffer = 0;
+    $bitsLeft = 0;
+    $dataLen = strlen($data);
+
+    for ($i = 0; $i < $dataLen; $i++) {
+        $buffer = ($buffer << 8) | ord($data[$i]);
+        $bitsLeft += 8;
+
+        while ($bitsLeft >= 5) {
+            $bitsLeft -= 5;
+            $index = ($buffer >> $bitsLeft) & 0x1F;
+            $output .= $alphabet[$index];
+        }
+    }
+
+    if ($bitsLeft > 0) {
+        $buffer <<= (5 - $bitsLeft);
+        $output .= $alphabet[$buffer & 0x1F];
+    }
+
+    return $output;
+}
+
+/**
+ * Decode Base32 string to binary data. Returns raw bytes or false on failure.
+ */
+function base32_decode($b32) {
+    if (empty($b32)) return '';
+    $b32 = strtoupper($b32);
+    $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    $alphabetFlipped = array();
+    for ($i = 0; $i < strlen($alphabet); $i++) {
+        $alphabetFlipped[$alphabet[$i]] = $i;
+    }
+
+    $b32 = rtrim($b32, '=');
+    $buffer = 0;
+    $bitsLeft = 0;
+    $output = '';
+
+    for ($i = 0; $i < strlen($b32); $i++) {
+        $char = $b32[$i];
+        if (!isset($alphabetFlipped[$char])) {
+            return false;
+        }
+        $buffer = ($buffer << 5) | $alphabetFlipped[$char];
+        $bitsLeft += 5;
+
+        if ($bitsLeft >= 8) {
+            $bitsLeft -= 8;
+            $output .= chr(($buffer >> $bitsLeft) & 0xFF);
+        }
+    }
+
+    return $output;
 }
 
 /**
@@ -539,6 +617,39 @@ function updateClientProfile($clientId, $data) {
     global $conn;
     
     try {
+        // Update name fields directly (if provided)
+        if (isset($data['first_name']) || isset($data['last_name']) || isset($data['middle_name'])) {
+            $updateNameQuery = "UPDATE Clients SET ";
+            $nameParts = [];
+            $nameParams = [];
+            
+            if (isset($data['first_name'])) {
+                $nameParts[] = "FirstName = ?";
+                $nameParams[] = $data['first_name'];
+            }
+            if (isset($data['last_name'])) {
+                $nameParts[] = "LastName = ?";
+                $nameParams[] = $data['last_name'];
+            }
+            if (isset($data['middle_name'])) {
+                $nameParts[] = "MiddleName = ?";
+                $nameParams[] = $data['middle_name'];
+            }
+            
+            if (!empty($nameParts)) {
+                $nameParts[] = "UpdatedAt = GETDATE()";
+                $updateNameQuery .= implode(", ", $nameParts) . " WHERE ClientID = ?";
+                $nameParams[] = $clientId;
+                
+                $nameStmt = sqlsrv_query($conn, $updateNameQuery, $nameParams);
+                if ($nameStmt === false) {
+                    $errors = sqlsrv_errors();
+                    return ['success' => false, 'message' => 'Error updating name: ' . ($errors[0]['message'] ?? 'Unknown error')];
+                }
+            }
+        }
+        
+        // Update other profile fields via stored procedure
         $tsql = "EXEC sp_UpdateClientProfile @ClientID = ?, @PhoneNumber = ?, @Address = ?, @BirthDate = ?, @Gender = ?, @CivilStatus = ?, @Occupation = ?";
         $params = array(
             $clientId,
@@ -552,9 +663,26 @@ function updateClientProfile($clientId, $data) {
         $stmt = sqlsrv_query($conn, $tsql, $params);
         
         if ($stmt === false) {
-            return ['success' => false, 'message' => 'Database error: ' . print_r(sqlsrv_errors(), true)];
+            $errors = sqlsrv_errors();
+            return ['success' => false, 'message' => 'Database error: ' . ($errors[0]['message'] ?? 'Unknown error')];
         }
         
+        // Fetch the result from stored procedure to verify success
+        if (sqlsrv_has_rows($stmt)) {
+            $result = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            if ($result === false) {
+                $errors = sqlsrv_errors();
+                return ['success' => false, 'message' => 'Database error: ' . ($errors[0]['message'] ?? 'Unknown error')];
+            }
+            
+            if (($result['Result'] ?? '') === 'Success' || ($result['Success'] ?? 0) == 1) {
+                return ['success' => true, 'message' => 'Profile updated successfully'];
+            } else {
+                return ['success' => false, 'message' => $result['Message'] ?? 'Failed to update profile'];
+            }
+        }
+        
+        // If no rows, assume success (some stored procedures may not return result sets)
         return ['success' => true, 'message' => 'Profile updated successfully'];
     } catch(Exception $e) {
         return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];

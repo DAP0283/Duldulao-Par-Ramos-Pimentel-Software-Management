@@ -70,71 +70,97 @@ function getClientApplications($client_id) {
     }
 }
 
+// Note: `getApplicationDetails()` is defined in `includes/auth_functions.php`.
+// Avoid redefining it here to prevent collisions.
+
+// Note: `updateApplicationStatus()` is defined in `includes/auth_functions.php`.
+// Use that implementation to avoid duplicate function declarations.
+
+// =====================================================
+// PAYMENT FUNCTIONS
+// =====================================================
+
 /**
- * Get single application details
+ * Create a payment record for an application
  */
-function getApplicationDetails($application_id) {
+function createPayment($application_id, $client_id, $amount, $method, $transaction_id) {
     global $conn;
-    
     try {
-        $query = "EXEC sp_GetApplicationDetails @ApplicationID = ?";
-        $result = sqlsrv_query($conn, $query, array($application_id));
-        
+        // Prefer stored procedure if available
+        $query = "EXEC sp_CreatePayment @ApplicationID = ?, @ClientID = ?, @Amount = ?, @Method = ?, @TransactionID = ?";
+        $params = array($application_id, $client_id, $amount, $method, $transaction_id);
+        $result = sqlsrv_query($conn, $query, $params);
+
         if ($result === false) {
-            return null;
+            return array('success' => false, 'message' => 'Database error: ' . print_r(sqlsrv_errors(), true));
         }
-        
+
         $row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC);
-        
-        if ($row) {
-            // Parse JSON data
-            $app_data = json_decode($row['ApplicationData'], true);
-            
-            return array(
-                'id' => $row['ApplicationID'],
-                'service_type' => $row['ServiceType'],
-                'status' => $row['Status'],
-                'created_at' => ($row['CreatedAt'] instanceof DateTime) ? 
-                    $row['CreatedAt']->format('Y-m-d H:i:s') : 
-                    $row['CreatedAt'],
-                'processing_notes' => $row['ProcessingNotes'],
-                'approved_by' => $row['ApprovedBy'],
-                'approval_date' => $row['ApprovalDate'],
-                'data' => $app_data
-            );
-        }
-        
-        return null;
-        
+        $payment_id = $row['PaymentID'] ?? null;
+
+        return array('success' => true, 'payment_id' => $payment_id);
     } catch (Exception $e) {
-        return null;
+        return array('success' => false, 'message' => $e->getMessage());
     }
 }
 
 /**
- * Update application status
+ * Get recent payments in the last N days
  */
-function updateApplicationStatus($application_id, $status, $notes = '', $approved_by = null) {
+function getRecentPayments($days = 30) {
     global $conn;
-    
     try {
-        $query = "EXEC sp_UpdateApplicationStatus 
-            @ApplicationID = ?,
-            @Status = ?,
-            @ProcessingNotes = ?,
-            @ApprovedByStaffID = ?";
-        
-        $params = array($application_id, $status, $notes, $approved_by);
-        $result = sqlsrv_query($conn, $query, $params);
-        
+        $query = "EXEC sp_GetRecentPayments @Days = ?";
+        $result = sqlsrv_query($conn, $query, array($days));
+
         if ($result === false) {
-            return false;
+            return array();
         }
-        
-        return true;
-        
+
+        $payments = array();
+        while ($row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC)) {
+            $payments[] = $row;
+        }
+
+        return $payments;
     } catch (Exception $e) {
-        return false;
+        return array();
+    }
+}
+
+/**
+ * Get payments between two dates (inclusive).
+ * Expects $start_date and $end_date as strings in 'YYYY-MM-DD' format or DateTime objects.
+ */
+function getPaymentsByDateRange($start_date, $end_date) {
+    global $conn;
+    try {
+        if ($start_date instanceof DateTime) $start = $start_date->format('Y-m-d 00:00:00');
+        else $start = date('Y-m-d 00:00:00', strtotime($start_date));
+
+        if ($end_date instanceof DateTime) $end = $end_date->format('Y-m-d 23:59:59');
+        else $end = date('Y-m-d 23:59:59', strtotime($end_date));
+
+        $query = "SELECT PaymentID, ApplicationID, ClientID, Method, Amount, TransactionID, CreatedAt
+                  FROM Payments
+                  WHERE CreatedAt BETWEEN ? AND ?
+                  ORDER BY CreatedAt DESC";
+
+        $params = array($start, $end);
+        $result = sqlsrv_query($conn, $query, $params);
+
+        if ($result === false) {
+            return array();
+        }
+
+        $payments = array();
+        while ($row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC)) {
+            $payments[] = $row;
+        }
+
+        return $payments;
+    } catch (Exception $e) {
+        return array();
     }
 }
 
@@ -178,54 +204,12 @@ function updateStaffRole($staff_id, $new_role, $updated_by, $notes = '') {
 /**
  * Get staff members by role
  */
-function getStaffByRole($role) {
-    global $conn;
-    
-    try {
-        $query = "EXEC sp_GetStaffByRole @Role = ?";
-        $result = sqlsrv_query($conn, $query, array($role));
-        
-        if ($result === false) {
-            return array();
-        }
-        
-        $staff = array();
-        while ($row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC)) {
-            $staff[] = $row;
-        }
-        
-        return $staff;
-        
-    } catch (Exception $e) {
-        return array();
-    }
-}
+// Note: use `getStaffMembers()` in `includes/auth_functions.php` for staff lookups.
 
 /**
  * Get all staff members with optional role filter
  */
-function getAllStaff($role = null) {
-    global $conn;
-    
-    try {
-        $query = "EXEC sp_GetStaffMembers @Role = ?";
-        $result = sqlsrv_query($conn, $query, array($role));
-        
-        if ($result === false) {
-            return array();
-        }
-        
-        $staff = array();
-        while ($row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC)) {
-            $staff[] = $row;
-        }
-        
-        return $staff;
-        
-    } catch (Exception $e) {
-        return array();
-    }
-}
+// Note: `getStaffMembers($role = null)` in `includes/auth_functions.php` provides this functionality.
 
 // =====================================================
 // DASHBOARD/STATISTICS FUNCTIONS
@@ -282,54 +266,12 @@ function getApplicationStats() {
 /**
  * Get pending applications for staff
  */
-function getPendingApplicationsForStaff($staff_id) {
-    global $conn;
-    
-    try {
-        $query = "EXEC sp_GetPendingApplicationsForStaff @StaffID = ?";
-        $result = sqlsrv_query($conn, $query, array($staff_id));
-        
-        if ($result === false) {
-            return array();
-        }
-        
-        $applications = array();
-        while ($row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC)) {
-            $applications[] = $row;
-        }
-        
-        return $applications;
-        
-    } catch (Exception $e) {
-        return array();
-    }
-}
+// Note: `getPendingApplicationsForStaff()` is defined in `includes/auth_functions.php`.
 
 /**
  * Get all applications (admin/punong barangay)
  */
-function getAllApplications($status = null) {
-    global $conn;
-    
-    try {
-        $query = "EXEC sp_GetAllApplications @Status = ?";
-        $result = sqlsrv_query($conn, $query, array($status));
-        
-        if ($result === false) {
-            return array();
-        }
-        
-        $applications = array();
-        while ($row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC)) {
-            $applications[] = $row;
-        }
-        
-        return $applications;
-        
-    } catch (Exception $e) {
-        return array();
-    }
-}
+// Note: `getAllApplications()` is defined in `includes/auth_functions.php`.
 
 // =====================================================
 // MESSAGE FUNCTIONS (Fix messages.php placeholder)

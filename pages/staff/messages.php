@@ -13,6 +13,41 @@ $success_message = '';
 $error_message = '';
 $tab = $_GET['tab'] ?? 'inbox';
 
+// Handle viewing message and marking as read
+if (isset($_GET['view_message_id'])) {
+    $message_id = intval($_GET['view_message_id']);
+    $view_query = "SELECT m.MessageID, m.SenderID, m.Subject, m.MessageBody, m.CreatedAt, m.IsRead, m.MessageType,
+                         s.FirstName, s.LastName, s.Role
+                  FROM Messages m
+                  LEFT JOIN Staff s ON m.SenderID = s.StaffID
+                  WHERE m.MessageID = ? AND (m.RecipientID = ? OR m.SenderID = ?)";
+    $view_stmt = sqlsrv_query($conn, $view_query, array($message_id, $staff_id, $staff_id));
+    
+    if ($view_stmt !== false && $row = sqlsrv_fetch_array($view_stmt, SQLSRV_FETCH_ASSOC)) {
+        // Mark as read
+        $update_query = "UPDATE Messages SET IsRead = 1 WHERE MessageID = ?";
+        sqlsrv_query($conn, $update_query, array($message_id));
+        
+        header('Content-Type: application/json');
+        $created = $row['CreatedAt'];
+        if ($created instanceof DateTime) {
+            $date_formatted = $created->format('Y-m-d H:i:s');
+        } else {
+            $date_formatted = date('Y-m-d H:i:s', strtotime($created));
+        }
+        
+        echo json_encode(array(
+            'id' => $row['MessageID'],
+            'from' => ($row['FirstName'] ?? 'System') . ' ' . ($row['LastName'] ?? '') . ' (' . ($row['Role'] ?? 'Staff') . ')',
+            'subject' => $row['Subject'] ?? 'No Subject',
+            'body' => $row['MessageBody'] ?? '',
+            'date' => $date_formatted,
+            'type' => $row['MessageType'] ?? 'Personal'
+        ));
+        exit();
+    }
+}
+
 // Handle message sending
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     $subject = $_POST['subject'] ?? '';
@@ -247,6 +282,26 @@ if ($staff_stmt !== false) {
         </main>
     </div>
     <script src="../../assets/js/main.js"></script>
+    
+    <!-- Message Modal -->
+    <div id="messageModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 700px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <span class="close" onclick="closeMessageModal()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+            <h3 id="modalSubject"></h3>
+            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
+                <p style="margin: 5px 0;"><strong>From:</strong> <span id="modalFrom"></span></p>
+                <p style="margin: 5px 0;"><strong>Type:</strong> <span id="modalType"></span></p>
+                <p style="margin: 5px 0;"><strong>Date:</strong> <span id="modalDate"></span></p>
+            </div>
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin-bottom: 15px; min-height: 100px; max-height: 400px; overflow-y: auto;">
+                <p id="modalBody" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"></p>
+            </div>
+            <div style="text-align: right;">
+                <button onclick="closeMessageModal()" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         function toggleRecipient() {
             const sendToAll = document.getElementById('send_to_all').checked;
@@ -256,7 +311,33 @@ if ($staff_stmt !== false) {
         }
 
         function viewMessage(messageId) {
-            alert('Message details:\n\nFull message viewing feature coming soon.\n\nMessage ID: ' + messageId);
+            fetch('?view_message_id=' + messageId)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('modalSubject').textContent = data.subject;
+                    document.getElementById('modalFrom').textContent = data.from;
+                    document.getElementById('modalBody').textContent = data.body;
+                    document.getElementById('modalDate').textContent = data.date;
+                    document.getElementById('modalType').innerHTML = '<span class="badge ' + 
+                        (data.type === 'Broadcast' ? 'badge-info' : 'badge-secondary') + '">' + 
+                        data.type + '</span>';
+                    document.getElementById('messageModal').style.display = 'block';
+                })
+                .catch(error => {
+                    alert('Error loading message: ' + error);
+                });
+        }
+
+        function closeMessageModal() {
+            document.getElementById('messageModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('messageModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
         }
 
         // Form validation
@@ -275,4 +356,5 @@ if ($staff_stmt !== false) {
             }
         });
     </script>
+
 </html>

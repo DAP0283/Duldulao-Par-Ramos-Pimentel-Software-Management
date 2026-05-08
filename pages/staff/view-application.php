@@ -16,8 +16,43 @@ if ($application_id <= 0) {
     exit();
 }
 
-$application = getApplicationDetails($application_id);
+// Handle processing notes update from staff
 $error_message = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['processing_notes'])) {
+    // If this POST includes a status change request, handle that first
+    if (isset($_POST['change_status']) && $_POST['change_status'] === 'to_processing') {
+        // Only allow Sanggunian Members to set to Processing
+        $staff_role = $_SESSION['role'] ?? '';
+        if ($staff_role === 'Sanggunian Member') {
+            $notes_input = trim($_POST['processing_notes'] ?? '');
+            $res = updateApplicationStatus($application_id, 'Processing', $notes_input, $_SESSION['user_id'] ?? null);
+            if (is_array($res) && ($res['success'] ?? false)) {
+                header('Location: view-application.php?id=' . urlencode($application_id));
+                exit();
+            } else {
+                $error_message = 'Failed to change status to Processing.';
+            }
+        } else {
+            $error_message = 'You are not authorized to change this status.';
+        }
+    } else {
+        // Regular notes update
+        $notes_input = trim($_POST['processing_notes']);
+        $update_query = "UPDATE Applications SET ProcessingNotes = ? WHERE ApplicationID = ?";
+        $update_params = array($notes_input, $application_id);
+        $update_stmt = sqlsrv_query($conn, $update_query, $update_params);
+        if ($update_stmt === false) {
+            $err = sqlsrv_errors();
+            $error_message = 'Failed to update notes.';
+        } else {
+            // reload to reflect changes
+            header('Location: view-application.php?id=' . urlencode($application_id));
+            exit();
+        }
+    }
+}
+
+$application = getApplicationDetails($application_id);
 if (!$application) {
     $error_message = 'Application not found.';
 }
@@ -82,9 +117,6 @@ $display_id = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
                 <ul>
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="applications.php">Applications</a></li>
-                    <?php if (!in_array($staff_role, ['Sangguian Member'])): ?>
-                        <li><a href="clients.php">Clients</a></li>
-                    <?php endif; ?>
                     <li><a href="messages.php">Messages</a></li>
                     <li><a href="../../auth/logout.php">Logout</a></li>
                 </ul>
@@ -136,12 +168,23 @@ $display_id = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
                                 <label>Status:</label>
                                 <span class="badge <?php echo htmlspecialchars($status_class); ?>"><?php echo htmlspecialchars($status); ?></span>
                             </div>
-                            <?php if (!empty($application['ProcessingNotes'])): ?>
                             <div class="detail-row">
                                 <label>Processing Notes:</label>
-                                <div class="announcement-box"><?php echo nl2br(htmlspecialchars($application['ProcessingNotes'])); ?></div>
+                                <div class="announcement-box"><?php echo nl2br(htmlspecialchars($application['ProcessingNotes'] ?? '')); ?></div>
                             </div>
-                            <?php endif; ?>
+
+                            <div class="detail-row">
+                                <form method="post" action="view-application.php?id=<?php echo urlencode($application_id); ?>">
+                                    <label for="processing_notes">Edit Processing Notes (visible to staff):</label>
+                                    <textarea id="processing_notes" name="processing_notes" rows="6" style="width:100%;"><?php echo htmlspecialchars($application['ProcessingNotes'] ?? ''); ?></textarea>
+                                    <div style="margin-top:8px;">
+                                        <button type="submit" class="btn btn-primary">Save Notes</button>
+                                        <?php if ($staff_role === 'Sanggunian Member' && $status === 'Pending'): ?>
+                                            <button type="submit" name="change_status" value="to_processing" class="btn btn-warning" style="margin-left:8px;">Mark as Processing</button>
+                                        <?php endif; ?>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </section>
 

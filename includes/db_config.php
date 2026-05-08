@@ -5,11 +5,13 @@
  */
 
 // SQL Server Connection Details
-$serverName = "MSI\SQLEXPRESS";
+$serverName = "143.198.82.85,1433"; // IP address and port of the SQL Server
 $connectionOptions = array(
     "Database" => "BarangayEServices",
-    "TrustServerCertificate" => true,
-    "Authentication" => "ActiveDirectoryIntegrated"
+    "UID" => "sa",                      // Use the 'sa' username
+    "PWD" => 'fFbdRW@gFd67HtE',         // Use your actual password
+    "TrustServerCertificate" => true,   // Mandatory for ODBC Driver 18
+    "Authentication" => "SqlPassword"   // Forces SQL login instead of SSPI
 );
 
 // Create connection

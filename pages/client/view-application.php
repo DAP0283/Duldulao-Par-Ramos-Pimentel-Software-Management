@@ -94,6 +94,7 @@ $app_id_display = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="my-applications.php" class="active">My Applications</a></li>
                     <li><a href="profile.php">My Profile</a></li>
+                    <li><a href="../../auth/2fa-setup.php">Security Settings</a></li>
                     <li><a href="../../auth/logout.php">Logout</a></li>
                 </ul>
             </nav>
@@ -177,6 +178,9 @@ $app_id_display = '#APP-' . str_pad($application_id, 5, '0', STR_PAD_LEFT);
                     <div class="form-actions">
                         <button type="button" class="btn btn-primary" onclick="printDocument()">Print</button>
                         <a href="my-applications.php" class="btn btn-secondary">Back to Applications</a>
+                        <?php if ($status === 'Processing' || $status === 'In Progress'): ?>
+                            <a href="mock-payment.php?id=<?php echo urlencode($app_id_display); ?>" class="btn btn-warning">Make Mock Payment</a>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endif; ?>

@@ -46,6 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Update profile in database
         $update_data = array(
+            'first_name' => $first_name,
+            'last_name' => $last_name,
+            'middle_name' => $middle_name,
             'phone_number' => $phone,
             'address' => $address,
             'birth_date' => $birthdate ?: null,
@@ -200,6 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="my-applications.php">My Applications</a></li>
                     <li><a href="profile.php" class="active">My Profile</a></li>
+                    <li><a href="../../auth/2fa-setup.php">Security Settings</a></li>
                     <li><a href="../../auth/logout.php">Logout</a></li>
                 </ul>
             </nav>
